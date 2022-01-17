@@ -132,6 +132,10 @@ class Main(commands.Cog):
 if __name__ == "__main__":
     bot.add_cog(Main(bot))
 
+    if not os.path.exists("guild_data.json"):
+        with open("guild_data.json", "a+") as file:
+            json.dump({}, file, indent=4)
+
     if os.path.exists("config.txt"):
         with open("config.txt", "r") as file:
             bot_key = file.read()
