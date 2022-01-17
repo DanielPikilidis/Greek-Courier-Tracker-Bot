@@ -1,4 +1,4 @@
-import asyncio, discord, requests, json, aiohttp
+import asyncio, discord, requests, json
 from bs4 import BeautifulSoup as bs
 from discord.ext import commands, tasks
 

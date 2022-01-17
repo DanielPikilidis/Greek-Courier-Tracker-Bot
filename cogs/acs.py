@@ -1,4 +1,4 @@
-import asyncio, discord, requests, json, aiohttp
+import asyncio, discord, requests, json
 from discord.ext import commands, tasks
 
 class Acs(commands.Cog):
