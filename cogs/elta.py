@@ -1,5 +1,4 @@
 import asyncio, discord, requests, json
-from bs4 import BeautifulSoup as bs
 from discord.ext import commands, tasks
 
 class Elta(commands.Cog):
@@ -100,19 +99,22 @@ class Elta(commands.Cog):
             await self.remove_id(ctx, id)
 
     async def get_last_status(self, id):
-        html = requests.get(f"https://itemsearch.elta.gr/Query/Direct/{id}").text
+        data = {"number": id}
+        response = requests.post("https://www.elta-courier.gr/track.php", data=data)
 
-        if html.find("Ιστορικό Μη Διαθέσιμο") != -1:
+        if response.status_code == 400:
             return 1, None
-            
-        soup = bs(html, features="html.parser")
 
-        last_raw = soup.find_all("tbody")[0].find_all("tr")[0]
-        last = last_raw.find_all("td")
+        formatted_response = json.loads(response.content)['result'][id]
 
-        date = (last[0].contents)[0]
-        description = (last[1].contents)[0]
-        location = (last[2].contents)[0]
+        if formatted_response['status'] == 0:
+            return 1, None
+        
+        last = formatted_response['result'][-1]
+
+        date = f"{last['date']}, {last['time']}"
+        location = last['place'] 
+        description = last['status']
 
         return 0, {"date": date, "description": description.capitalize(), "location": location.capitalize()}
 
