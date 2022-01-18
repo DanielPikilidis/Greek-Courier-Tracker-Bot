@@ -1,4 +1,4 @@
-import asyncio, discord, requests, json
+import asyncio, discord, requests, json, os
 from bs4 import BeautifulSoup as bs
 from discord.ext import commands, tasks
 
@@ -126,7 +126,7 @@ class Easymail(commands.Cog):
             self.bot.guild_data[str(ctx.guild.id)]['easymail'].append({"id": id, "description": description, "status": status})
             await ctx.send(f"Added {id} ({description}) to the list.")
 
-        with open("guild_data.json", "w") as file:
+        with open(os.path.relpath("../data/guild_data.json"), "w") as file:
             json.dump(self.bot.guild_data, file, indent=4)
 
     async def remove_id(self, ctx: commands.Context, id):
@@ -136,7 +136,7 @@ class Easymail(commands.Cog):
                 self.bot.guild_data[str(ctx.guild.id)]['easymail'].remove(i)
                 await ctx.send(f"Removed {id} ({description}) from the list")
 
-        with open("guild_data.json", "w") as file:
+        with open(os.path.relpath("../data/guild_data.json"), "w") as file:
             json.dump(self.bot.guild_data, file, indent=4)
 
     async def check_if_changed(self, guild, entry, old_status):
@@ -149,7 +149,7 @@ class Easymail(commands.Cog):
                     if i['id'] == entry['id']:
                         self.bot.guild_data[guild]['easymail'].remove(i)
 
-            with open("guild_data.json", "w") as file:
+            with open(os.path.relpath("../data/guild_data.json"), "w") as file:
                 json.dump(self.bot.guild_data, file, indent=4)
 
             return True, new

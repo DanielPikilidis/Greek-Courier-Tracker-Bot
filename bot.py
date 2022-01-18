@@ -19,8 +19,8 @@ class Main(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         if not self.started:
-            with open("guild_data.json", "r") as f:
-                bot.guild_data = json.loads(f.read())
+            with open("data/guild_data.json", "r") as file:
+                bot.guild_data = json.loads(file.read())
 
             for filename in os.listdir("./cogs"):
                 if filename.endswith(".py"):
@@ -39,13 +39,13 @@ class Main(commands.Cog):
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
         bot.guild_data[str(guild.id)] = {"updates_channel": 0, "acs": [], "easymail": [], "elta": [], "speedex": [], "geniki": []}
-        with open("guild_data.json", "w") as file:
+        with open(os.path.relpath("../data/guild_data.json"), "w") as file:
             json.dump(bot.guild_data, file, indent=4)
 
     @commands.Cog.listener()
     async def on_guild_remove(self, guild):
         bot.guild_data.pop(str(guild.id))
-        with open("guild_data.json", "w") as file:
+        with open(os.path.relpath("../data/guild_data.json"), "w") as file:
             json.dump(bot.guild_data, file, indent=4)
 
     @commands.command(name="help")
@@ -92,7 +92,7 @@ class Main(commands.Cog):
 
         bot.guild_data[str(ctx.guild.id)]['updates_channel'] = str(channel.id)
         await ctx.send("Updates channel changed.")
-        with open("guild_data.json", "w") as file:
+        with open(os.path.relpath("../data/guild_data.json"), "w") as file:
             json.dump(bot.guild_data, file, indent=4)
 
     @updates.error
@@ -132,14 +132,17 @@ class Main(commands.Cog):
 if __name__ == "__main__":
     bot.add_cog(Main(bot))
 
-    if not os.path.exists("guild_data.json"):
-        with open("guild_data.json", "a+") as file:
+    if not os.path.exists("data"):
+        os.makedirs("data")
+
+    if not os.path.exists("data/guild_data.json"):
+        with open("data/guild_data.json", "w") as file:
             json.dump({}, file, indent=4)
 
-    if os.path.exists("config.txt"):
-        with open("config.txt", "r") as file:
-            bot_key = file.read()
-        bot.run(bot_key)
+    if os.path.exists("data/config.txt"):
+        with open("data/config.txt", "r") as file:
+            key = file.read()
+        bot.run(key)
     else:
-        open("config.txt", "w").close()
-        print("Paste the api key in the config.txt (nothign else in there) and restart the bot.")
+        open("data/config.txt", "w").close()
+        print("Paste your key in config.txt file in data/")
