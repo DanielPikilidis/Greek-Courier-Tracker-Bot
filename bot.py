@@ -129,18 +129,22 @@ class Main(commands.Cog):
 
 
 def setup_logger() -> logging.Logger:
-    logname = "logs/output.log"
-    handler = TimedRotatingFileHandler(logname, when="midnight", interval=1, backupCount=1)
-    handler.suffix = "%Y%m%d"
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[
-            handler,
-            logging.StreamHandler(stdout)
-    ])
+    discord_logger = logging.getLogger('discord')
+    handler = logging.FileHandler(filename="logs/discord.log", encoding="utf-8", mode='w')
+    handler.setFormatter(logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s"))
+    discord_logger.addHandler(handler)
 
-    return logging
+    logger = logging.getLogger("output")
+    logname = "logs/output.log"
+    logger.level = logging.INFO
+    handler = TimedRotatingFileHandler(logname, when="midnight", interval=1, backupCount=1)
+    handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+    handler.suffix = "%Y%m%d"
+
+    logger.addHandler(handler)
+    logger.addHandler(logging.StreamHandler(stdout))
+    
+    return logger
 
 if __name__ == "__main__":
     prefix = "?/"
