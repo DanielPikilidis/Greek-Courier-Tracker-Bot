@@ -1,5 +1,8 @@
-import asyncio, discord, requests, json, os
+import asyncio, discord
 from discord.ext import commands, tasks
+from requests import post
+from json import dump, loads
+from os.path import relpath
 
 class Elta(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -14,10 +17,10 @@ class Elta(commands.Cog):
             color=discord.Color.blue()
         )
 
-        embed.add_field(name="?/track <id1> <id2> ...", value="Returns current status for the parcel(s)", inline=False)
-        embed.add_field(name="?/add <id> <description>", value="Adds the id to the list.", inline=False)
-        embed.add_field(name="?/edit <id> <new description>", value = "Replaces the old description with the new.", inline=False)
-        embed.add_field(name="?/remove <id>", value="Removed the id from the list.", inline=False)
+        embed.add_field(name="?/elta track <id1> <id2> ...", value="Returns current status for the parcel(s)", inline=False)
+        embed.add_field(name="?/elta add <id> <description>", value="Adds the id to the list.", inline=False)
+        embed.add_field(name="?/elta edit <id> <new description>", value = "Replaces the old description with the new.", inline=False)
+        embed.add_field(name="?/elta remove <id>", value="Removed the id from the list.", inline=False)
 
         embed.set_footer(text=f"elta help requested by: {ctx.author.display_name}")
         await ctx.send(embed=embed)
@@ -100,12 +103,12 @@ class Elta(commands.Cog):
 
     async def get_last_status(self, id):
         data = {"number": id}
-        response = requests.post("https://www.elta-courier.gr/track.php", data=data)
+        response = post("https://www.elta-courier.gr/track.php", data=data)
 
         if response.status_code == 400:
             return 1, None
 
-        formatted_response = json.loads(response.content)['result'][id]
+        formatted_response = loads(response.content)['result'][id]
 
         if formatted_response['status'] == 0:
             return 1, None
@@ -128,8 +131,8 @@ class Elta(commands.Cog):
             self.bot.guild_data[str(ctx.guild.id)]['elta'].append({"id": id, "description": description, "status": status})
             await ctx.send(f"Added {id} ({description}) to the list.")
 
-        with open(os.path.relpath("../data/guild_data.json"), "w") as file:
-            json.dump(self.bot.guild_data, file, indent=4)
+        with open(relpath("../data/guild_data.json"), "w") as file:
+            dump(self.bot.guild_data, file, indent=4)
 
     async def remove_id(self, ctx: commands.Context, id):
         for i in self.bot.guild_data[str(ctx.guild.id)]['elta']:
@@ -138,8 +141,8 @@ class Elta(commands.Cog):
                 self.bot.guild_data[str(ctx.guild.id)]['elta'].remove(i)
                 await ctx.send(f"Removed {id} ({description}) from the list")
 
-        with open(os.path.relpath("../data/guild_data.json"), "w") as file:
-            json.dump(self.bot.guild_data, file, indent=4)
+        with open(relpath("../data/guild_data.json"), "w") as file:
+            dump(self.bot.guild_data, file, indent=4)
 
     async def check_if_changed(self, guild, entry, old_status):
         result, new = await self.get_last_status(entry['id'])
@@ -151,8 +154,8 @@ class Elta(commands.Cog):
                     if i['id'] == entry['id']:
                         self.bot.guild_data[guild]['elta'].remove(i)
 
-            with open(os.path.relpath("../data/guild_data.json"), "w") as file:
-                json.dump(self.bot.guild_data, file, indent=4)
+            with open(relpath("../data/guild_data.json"), "w") as file:
+                dump(self.bot.guild_data, file, indent=4)
 
             return True, new
         return False, None

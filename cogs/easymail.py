@@ -1,6 +1,10 @@
-import asyncio, discord, requests, json, os
+import asyncio, discord
 from bs4 import BeautifulSoup as bs
 from discord.ext import commands, tasks
+from requests import get
+from json import dump
+from os.path import relpath
+
 
 class Easymail(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -15,10 +19,10 @@ class Easymail(commands.Cog):
             color=discord.Color.purple()
         )
 
-        embed.add_field(name="?/track <id1> <id2> ...", value="Returns current status for the parcel(s)", inline=False)
-        embed.add_field(name="?/add <id> <description>", value="Adds the id to the list.", inline=False)
-        embed.add_field(name="?/edit <id> <new description>", value = "Replaces the old description with the new.", inline=False)
-        embed.add_field(name="?/remove <id>", value="Removed the id from the list.", inline=False)
+        embed.add_field(name="?/easymail track <id1> <id2> ...", value="Returns current status for the parcel(s)", inline=False)
+        embed.add_field(name="?/easymail add <id> <description>", value="Adds the id to the list.", inline=False)
+        embed.add_field(name="?/easymail edit <id> <new description>", value = "Replaces the old description with the new.", inline=False)
+        embed.add_field(name="?/easymail remove <id>", value="Removed the id from the list.", inline=False)
 
         embed.set_footer(text=f"easymail help requested by: {ctx.author.display_name}")
         await ctx.send(embed=embed)
@@ -100,7 +104,7 @@ class Easymail(commands.Cog):
             await self.remove_id(ctx, id)
 
     async def get_last_status(self, id):
-        html = requests.get(f"https://trackntrace.easymail.gr/{id}").text
+        html = get(f"https://trackntrace.easymail.gr/{id}").text
 
         if html.find("Δεν βρέθηκε η Αποστολή. Παρακαλώ επικοινωνήστε με το κατάστημα.") != -1:
             return 1, None
@@ -126,8 +130,8 @@ class Easymail(commands.Cog):
             self.bot.guild_data[str(ctx.guild.id)]['easymail'].append({"id": id, "description": description, "status": status})
             await ctx.send(f"Added {id} ({description}) to the list.")
 
-        with open(os.path.relpath("../data/guild_data.json"), "w") as file:
-            json.dump(self.bot.guild_data, file, indent=4)
+        with open(relpath("../data/guild_data.json"), "w") as file:
+            dump(self.bot.guild_data, file, indent=4)
 
     async def remove_id(self, ctx: commands.Context, id):
         for i in self.bot.guild_data[str(ctx.guild.id)]['easymail']:
@@ -136,8 +140,8 @@ class Easymail(commands.Cog):
                 self.bot.guild_data[str(ctx.guild.id)]['easymail'].remove(i)
                 await ctx.send(f"Removed {id} ({description}) from the list")
 
-        with open(os.path.relpath("../data/guild_data.json"), "w") as file:
-            json.dump(self.bot.guild_data, file, indent=4)
+        with open(relpath("../data/guild_data.json"), "w") as file:
+            dump(self.bot.guild_data, file, indent=4)
 
     async def check_if_changed(self, guild, entry, old_status):
         result, new = await self.get_last_status(entry['id'])
@@ -149,8 +153,8 @@ class Easymail(commands.Cog):
                     if i['id'] == entry['id']:
                         self.bot.guild_data[guild]['easymail'].remove(i)
 
-            with open(os.path.relpath("../data/guild_data.json"), "w") as file:
-                json.dump(self.bot.guild_data, file, indent=4)
+            with open(relpath("../data/guild_data.json"), "w") as file:
+                dump(self.bot.guild_data, file, indent=4)
 
             return True, new
         return False, None

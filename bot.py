@@ -1,11 +1,11 @@
-import discord, os, json
+import discord, logging
 from discord.ext import commands
+from logging.handlers import TimedRotatingFileHandler
+from os import listdir, makedirs
+from os.path import relpath, exists
+from json import loads, dump
+from sys import stdout
 
-prefix = "?/"
-bot = commands.Bot(command_prefix=prefix, help_command=None)
-
-started = False
-couriers = []
 
 class Main(commands.Cog):
     def __init__(self, bot):
@@ -17,33 +17,35 @@ class Main(commands.Cog):
     async def on_ready(self):
         if not self.started:
             with open("data/guild_data.json", "r") as file:
-                bot.guild_data = json.loads(file.read())
+                bot.guild_data = loads(file.read())
 
-            for filename in os.listdir("./cogs"):
+            for filename in listdir("./cogs"):
                 if filename.endswith(".py"):
                     try:
                         self.bot.load_extension(f"cogs.{filename[:-3]}")
-                        print(f"Loaded cog: {filename[:-3].capitalize()}")
+                        bot.logger.info(f"Loaded cog: {filename[:-3].capitalize()}")
                         self.couriers.append(self.bot.get_cog(filename[:-3].capitalize()))
                     except:
-                        print(f"Failed to load cog: {filename[:-3].capitalize()}")
+                        bot.logger.warning(f"Failed to load cog: {filename[:-3].capitalize()}")
             
             self.started = True
-            print("Bot logged in and ready")
+            bot.logger.info(f"Bot logged in and ready. Joined guilds: {len(bot.guilds)}")
 
         await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="?/help"))
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
+        bot.logger.info(f"Joined guild {guild.id}")
         bot.guild_data[str(guild.id)] = {"updates_channel": 0, "acs": [], "easymail": [], "elta": [], "speedex": [], "geniki": []}
-        with open(os.path.relpath("../data/guild_data.json"), "w") as file:
-            json.dump(bot.guild_data, file, indent=4)
+        with open(relpath("../data/guild_data.json"), "w") as file:
+            dump(bot.guild_data, file, indent=4)
 
     @commands.Cog.listener()
     async def on_guild_remove(self, guild):
+        bot.logger.info(f"Left guild {guild.id}")
         bot.guild_data.pop(str(guild.id))
-        with open(os.path.relpath("../data/guild_data.json"), "w") as file:
-            json.dump(bot.guild_data, file, indent=4)
+        with open(relpath("../data/guild_data.json"), "w") as file:
+            dump(bot.guild_data, file, indent=4)
 
     @commands.command(name="help")
     async def help(self, ctx: commands.Context):
@@ -89,8 +91,8 @@ class Main(commands.Cog):
 
         bot.guild_data[str(ctx.guild.id)]['updates_channel'] = str(channel.id)
         await ctx.send("Updates channel changed.")
-        with open(os.path.relpath("../data/guild_data.json"), "w") as file:
-            json.dump(bot.guild_data, file, indent=4)
+        with open(relpath("../data/guild_data.json"), "w") as file:
+            dump(bot.guild_data, file, indent=4)
 
     @updates.error
     async def updates_error(self, ctx, error):
@@ -126,17 +128,36 @@ class Main(commands.Cog):
                 await i.send_status(ctx, entry['id'], entry['description'])
 
 
+def setup_logger() -> logging.Logger:
+    logname = "logs/output.log"
+    handler = TimedRotatingFileHandler(logname, when="midnight", interval=1, backupCount=1)
+    handler.suffix = "%Y%m%d"
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=[
+            handler,
+            logging.StreamHandler(stdout)
+    ])
+
+    return logging
+
 if __name__ == "__main__":
+    prefix = "?/"
+    bot = commands.Bot(command_prefix=prefix, help_command=None)
+
+    bot.logger = setup_logger()
+
     bot.add_cog(Main(bot))
 
-    if not os.path.exists("data"):
-        os.makedirs("data")
+    if not exists("data"):
+        makedirs("data")
 
-    if not os.path.exists("data/guild_data.json"):
+    if not exists("data/guild_data.json"):
         with open("data/guild_data.json", "w") as file:
-            json.dump({}, file, indent=4)
+            dump({}, file, indent=4)
 
-    if os.path.exists("data/config.txt"):
+    if exists("data/config.txt"):
         with open("data/config.txt", "r") as file:
             key = file.read()
         bot.run(key)
