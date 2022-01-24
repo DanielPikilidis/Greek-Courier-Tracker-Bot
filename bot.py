@@ -36,15 +36,15 @@ class Main(commands.Cog):
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
         bot.logger.info(f"Joined guild {guild.id}")
-        bot.guild_data[str(guild.id)] = {"updates_channel": 0, "acs": [], "easymail": [], "elta": [], "speedex": [], "geniki": []}
-        with open(relpath("../data/guild_data.json"), "w") as file:
+        bot.guild_data[str(guild.id)] = {"updates_channel": 0, "acs": [], "easymail": [], "elta": [], "speedex": [], "geniki": [], "skroutz": []}
+        with open(relpath("data/guild_data.json"), "w") as file:
             dump(bot.guild_data, file, indent=4)
 
     @commands.Cog.listener()
     async def on_guild_remove(self, guild):
         bot.logger.info(f"Left guild {guild.id}")
         bot.guild_data.pop(str(guild.id))
-        with open(relpath("../data/guild_data.json"), "w") as file:
+        with open(relpath("data/guild_data.json"), "w") as file:
             dump(bot.guild_data, file, indent=4)
 
     @commands.command(name="help")

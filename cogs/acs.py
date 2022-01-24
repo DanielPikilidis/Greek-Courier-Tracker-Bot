@@ -75,7 +75,7 @@ class Acs(commands.Cog):
     ########### HELPER FUNCTIONS ###########
 
     async def send_status(self, ctx: commands.Context, id, description=None):
-        result, status = await self.get_last_status(id)
+        (result, status) = await self.get_last_status(id)
         if result == 1:
             await ctx.send(f"Parcel ({id}) not found")
             return
@@ -94,51 +94,41 @@ class Acs(commands.Cog):
 
         embed.add_field(name="Location", value=status['location'], inline=True)
         embed.add_field(name="Description", value=status['description'], inline=True)
-        embed.add_field(name="Date", value=f"{status['date']}, {status['time']}", inline=False)
+        embed.add_field(name="Date", value=f"{status['date']}", inline=False)
 
         await ctx.send(embed=embed)
 
-        if status['description'].upper() == "ΠΑΡΑΔΟΣΗ":
+        if status['delivered']:
             await self.remove_id(ctx, id)
 
-    async def get_last_status(self, id):
+    async def get_last_status(self, id) -> tuple:
         response = get(f"https://api.acscourier.net/api/parcels/search/{id}")
         if response.status_code == 400:
-            return 1, None
+            return (1, None)
 
-        response = response.json()
+        package = (response.json())["items"][0]
+        delivered = package["isDelivered"]
 
-        package = response["items"][0]
-
-        if package['isDelivered']:
-            date = package["deliveryDate"][:10]
-            date = f"{date[8:]}-{date[5:7]}-{date[0:4]}"
-            time = package["deliveryDate"][11:-6]
-            description = "Παραδοση"
-            location = package["destinationDescription"]
-            return 0, {"date": date, "time": time, "description": description, "location": location.capitalize()}
-
-        status_history = package["statusHistory"]
-
-        if len(status_history) == 0:
-            date = package["pickupDate"][:10]
-            date = f"{date[8:]}-{date[5:7]}-{date[0:4]}"
-            time = package["pickupDate"][11:-6]
-            description = "Προς Παραλαβη"
-            location = package["pickupDescription"]
-            return 0, {"date": date, "time": time, "description": description, "location": location.capitalize()}
-            
-        last = status_history[-1]
-        date = last["controlPointDate"][:10]
-        date = f"{date[8:]}-{date[5:7]}-{date[0:4]}"
-        time = last["controlPointDate"][11:-6]
-        description = last["description"]
-        location = last["controlPoint"]
-
-        return 0, {"date": date, "time": time, "description": description.capitalize(), "location": location.capitalize()}
+        if len(package["statusHistory"]) == 0:
+            return (0, {
+                "date": "\u200b", 
+                "description": "Προς Παραλαβη", 
+                "location": "\u200b",
+                "delivered": delivered
+            })
+        else:
+            last_status = package["statusHistory"][-1]
+            date = last_status["controlPointDate"]
+            date = f"{date[8:10]}-{date[5:7]}-{date[0:4]}, {date[11:]}"
+            return (0, {
+                "date": date, 
+                "description": last_status["description"], 
+                "location": last_status["controlPoint"].capitalize(), 
+                "delivered": delivered
+            })
 
     async def store_id(self, ctx: commands.Context, id, description):
-        result, status = await self.get_last_status(id)
+        (result, status) = await self.get_last_status(id)
         if result == 1:
             await ctx.send(f"Parcel ({id}) not found")
             return
@@ -147,7 +137,7 @@ class Acs(commands.Cog):
             self.bot.guild_data[str(ctx.guild.id)]['acs'].append({"id": id, "description": description, "status": status})
             await ctx.send(f"Added {id} ({description}) to the list.")
 
-        with open(relpath("../data/guild_data.json"), "w") as file:
+        with open(relpath("data/guild_data.json"), "w") as file:
             dump(self.bot.guild_data, file, indent=4)
 
     async def remove_id(self, ctx: commands.Context, id):
@@ -157,24 +147,24 @@ class Acs(commands.Cog):
                 self.bot.guild_data[str(ctx.guild.id)]['acs'].remove(i)
                 await ctx.send(f"Removed {id} ({description}) from the list")
 
-        with open(relpath("../data/guild_data.json"), "w") as file:
+        with open(relpath("data/guild_data.json"), "w") as file:
             dump(self.bot.guild_data, file, indent=4)
 
-    async def check_if_changed(self, guild, entry, old_status):
-        result, new = await self.get_last_status(entry['id'])
+    async def check_if_changed(self, guild, entry, old_status) -> tuple:
+        (result, new) = await self.get_last_status(entry['id'])
 
-        if new['date'] != old_status['date'] or new['time'] != old_status['time']:
+        if new['date'] != old_status['date']:
             entry['status'] = new
-            if new['description'].upper() == "ΠΑΡΑΔΟΣΗ":
+            if new['delivered']:
                 for i in self.bot.guild_data[guild]['acs']:
                     if i['id'] == entry['id']:
                         self.bot.guild_data[guild]['acs'].remove(i)
 
-            with open(relpath("../data/guild_data.json"), "w") as file:
+            with open(relpath("data/guild_data.json"), "w") as file:
                 dump(self.bot.guild_data, file, indent=4)
 
-            return True, new
-        return False, None
+            return (True, new)
+        return (False, None)
 
     @tasks.loop(minutes=5.0)
     async def update_ids(self):
@@ -183,7 +173,7 @@ class Acs(commands.Cog):
             if updates_channel == 0:
                 continue
             for entry in self.bot.guild_data[guild]['acs']:
-                result, new = await self.check_if_changed(guild, entry, entry['status'])
+                (result, new) = await self.check_if_changed(guild, entry, entry['status'])
                 if result:
                     embed = discord.Embed(
                         title=entry['description'],
@@ -192,12 +182,12 @@ class Acs(commands.Cog):
                     )
                     embed.add_field(name="Location", value=new['location'], inline=True)
                     embed.add_field(name="Description", value=new['description'], inline=True)
-                    embed.add_field(name="Date", value=f"{new['date']}, {new['time']}", inline=False)
+                    embed.add_field(name="Date", value=f"{new['date']}", inline=False)
 
                     channel = self.bot.get_channel(updates_channel)
                     await channel.send(embed=embed)
 
-                    if new['description'].upper() == "ΠΑΡΑΔΟΣΗ":
+                    if new['delivered']:
                         await channel.send(f"Removed {entry['id']} ({entry['description']}) from the list")
 
     @update_ids.before_loop
@@ -205,5 +195,5 @@ class Acs(commands.Cog):
         await asyncio.sleep(0)
 
 
-def setup(bot):
+def setup(bot: commands.Bot):
     bot.add_cog(Acs(bot))

@@ -76,7 +76,7 @@ class Speedex(commands.Cog):
     ########### HELPER FUNCTIONS ###########
 
     async def send_status(self, ctx: commands.Context, id, description=None):
-        result, status = await self.get_last_status(id)
+        (result, status) = await self.get_last_status(id)
         if result == 1:
             await ctx.send(f"Parcel ({id}) not found")
             return
@@ -99,38 +99,43 @@ class Speedex(commands.Cog):
 
         await ctx.send(embed=embed)
 
-        if status['description'].upper() == "Η ΑΠΟΣΤΟΛΗ ΠΑΡΑΔΟΘΗΚΕ":
+        if status['delivered']:
             await self.remove_id(ctx, id)
 
-
-    async def get_last_status(self, id):
+    async def get_last_status(self, id) -> tuple:
         html = get(f"http://www.speedex.gr/speedex/NewTrackAndTrace.aspx?number={id}").text
         soup = bs(html, features="html.parser")
         timeline_section = soup.find("section", {"id": "timeline"})
 
         if timeline_section.text.find("Δεν βρέθηκαν αποτελέσματα.") != -1:
-            return 1, None
+            return (1, None)
 
         if timeline_section.text.find("Η ΑΠΟΣΤΟΛΗ ΠΑΡΑΔΟΘΗΚΕ") != -1:
             status = timeline_section.find("div", {"class": "card-header delivered-speedex"})
-            description = "Η ΑΠΟΣΤΟΛΗ ΠΑΡΑΔΟΘΗΚΕ"
+            description = "Η Αποστολή Παραδόθηκε"
             other = status.find("span", {"class": "font-small-3"}).contents[0].split(", ")
-            location = other[0]
-            date = other[1]
-            return 0, {"date": date, "description": description, "location": location}
-
-        status = timeline_section.find_all("ul", {"class": "timeline"})[1]
-        last = status.find_all("li", {"class": "timeline-item mt-3"})[-1]
-
-        description = last.find("h4", {"class": "card-title"}).contents[0]
-        other = last.find("span", {"class": "font-small-3"}).contents[0].split(", ")
-        location = other[0]
-        date = other[1]
-
-        return 0, {"date": date, "description": description.capitalize(), "location": location.capitalize()}
+            
+            return (0, {
+                "date": other[1],
+                "description": description,
+                "location": other[0].capitalize(),
+                "delivered": True
+            })
+        else:
+            status = timeline_section.find_all("ul", {"class": "timeline"})[1]
+            last_status = status.find_all("li", {"class": "timeline-item mt-3"})[-1]
+            description = last_status.find("h4", {"class": "card-title"}).contents[0]
+            other = last_status.find("span", {"class": "font-small-3"}).contents[0].split(", ")
+            
+            return (0, {
+                "date": other[1],
+                "description": description.capitalize(),
+                "location": other[0].capitalize(),
+                "delivered": False
+            })
 
     async def store_id(self, ctx: commands.Context, id, description):
-        result, status = await self.get_last_status(id)
+        (result, status) = await self.get_last_status(id)
         if result == 1:
             await ctx.send(f"Parcel ({id}) not found")
             return
@@ -139,7 +144,7 @@ class Speedex(commands.Cog):
             self.bot.guild_data[str(ctx.guild.id)]['speedex'].append({"id": id, "description": description, "status": status})
             await ctx.send(f"Added {id} ({description}) to the list.")
 
-        with open(relpath("../data/guild_data.json"), "w") as file:
+        with open(relpath("data/guild_data.json"), "w") as file:
             dump(self.bot.guild_data, file, indent=4)
 
     async def remove_id(self, ctx: commands.Context, id):
@@ -149,24 +154,24 @@ class Speedex(commands.Cog):
                 self.bot.guild_data[str(ctx.guild.id)]['speedex'].remove(i)
                 await ctx.send(f"Removed {id} ({description}) from the list")
 
-        with open(relpath("../data/guild_data.json"), "w") as file:
+        with open(relpath("data/guild_data.json"), "w") as file:
             dump(self.bot.guild_data, file, indent=4)
 
-    async def check_if_changed(self, guild, entry, old_status):
-        result, new = await self.get_last_status(entry['id'])
+    async def check_if_changed(self, guild, entry, old_status) -> tuple:
+        (result, new) = await self.get_last_status(entry['id'])
 
-        if new['date'] != old_status['date'] or new['time'] != old_status['time']:
+        if new['date'] != old_status['date']:
             entry['status'] = new
             if new['description'].upper() == "Η ΑΠΟΣΤΟΛΗ ΠΑΡΑΔΟΘΗΚΕ":
                 for i in self.bot.guild_data[guild]['speedex']:
                     if i['id'] == entry['id']:
                         self.bot.guild_data[guild]['speedex'].remove(i)
 
-            with open(relpath("../data/guild_data.json"), "w") as file:
+            with open(relpath("data/guild_data.json"), "w") as file:
                 dump(self.bot.guild_data, file, indent=4)
 
-            return True, new
-        return False, None
+            return (True, new)
+        return (False, None)
 
     @tasks.loop(minutes=5.0)
     async def update_ids(self):
@@ -175,7 +180,7 @@ class Speedex(commands.Cog):
             if updates_channel == 0:
                 continue
             for entry in self.bot.guild_data[guild]['speedex']:
-                result, new = await self.check_if_changed(guild, entry, entry['status'])
+                (result, new) = await self.check_if_changed(guild, entry, entry['status'])
                 if result:
                     embed = discord.Embed(
                         title=entry['description'],
@@ -184,12 +189,12 @@ class Speedex(commands.Cog):
                     )
                     embed.add_field(name="Location", value=new['location'], inline=True)
                     embed.add_field(name="Description", value=new['description'], inline=True)
-                    embed.add_field(name="Date", value=f"{new['date']}, {new['time']}", inline=False)
+                    embed.add_field(name="Date", value=f"{new['date']}", inline=False)
 
                     channel = self.bot.get_channel(updates_channel)
                     await channel.send(embed=embed)
 
-                    if new['description'].upper() == "Η ΑΠΟΣΤΟΛΗ ΠΑΡΑΔΟΘΗΚΕ":
+                    if new['delivered']:
                         await channel.send(f"Removed {entry['id']} ({entry['description']}) from the list")
 
     @update_ids.before_loop
@@ -197,5 +202,5 @@ class Speedex(commands.Cog):
         await asyncio.sleep(180)
 
 
-def setup(bot):
+def setup(bot: commands.Bot):
     bot.add_cog(Speedex(bot))

@@ -75,7 +75,7 @@ class Elta(commands.Cog):
     ########### HELPER FUNCTIONS ###########
 
     async def send_status(self, ctx: commands.Context, id, description=None):
-        result, status = await self.get_last_status(id)
+        (result, status) = await self.get_last_status(id)
         if result == 1:
             await ctx.send(f"Parcel ({id}) not found")
             return
@@ -98,31 +98,32 @@ class Elta(commands.Cog):
 
         await ctx.send(embed=embed)
 
-        if status['description'].upper() == "ΑΠΟΣΤΟΛΗ ΠΑΡΑΔΟΘΗΚΕ":
+        if status['delivered']:
             await self.remove_id(ctx, id)
 
-    async def get_last_status(self, id):
+    async def get_last_status(self, id) -> tuple:
         data = {"number": id}
         response = post("https://www.elta-courier.gr/track.php", data=data)
 
         if response.status_code == 400:
-            return 1, None
+            return (1, None)
 
         formatted_response = loads(response.content)['result'][id]
 
         if formatted_response['status'] == 0:
-            return 1, None
+            return (1, None)
         
-        last = formatted_response['result'][-1]
+        last_status = formatted_response['result'][-1]
 
-        date = f"{last['date']}, {last['time']}"
-        location = last['place'] 
-        description = last['status']
-
-        return 0, {"date": date, "description": description.capitalize(), "location": location.capitalize()}
+        return (0, {
+            "date": f"{last_status['date']}, {last_status['time']}",
+            "description": last_status["status"],
+            "location": last_status["place"],
+            "delivered": last_status["status"] == "ΑΠΟΣΤΟΛΗ ΠΑΡΑΔΟΘΗΚΕ-ΧΩΡΙΣ ΣΤΟΙΧΕΙΟ ΠΑΡΑΔΟΣΗΣ"
+        })
 
     async def store_id(self, ctx: commands.Context, id, description):
-        result, status = await self.get_last_status(id)
+        (result, status) = await self.get_last_status(id)
         if result == 1:
             await ctx.send(f"Parcel ({id}) not found")
             return
@@ -131,7 +132,7 @@ class Elta(commands.Cog):
             self.bot.guild_data[str(ctx.guild.id)]['elta'].append({"id": id, "description": description, "status": status})
             await ctx.send(f"Added {id} ({description}) to the list.")
 
-        with open(relpath("../data/guild_data.json"), "w") as file:
+        with open(relpath("data/guild_data.json"), "w") as file:
             dump(self.bot.guild_data, file, indent=4)
 
     async def remove_id(self, ctx: commands.Context, id):
@@ -141,24 +142,24 @@ class Elta(commands.Cog):
                 self.bot.guild_data[str(ctx.guild.id)]['elta'].remove(i)
                 await ctx.send(f"Removed {id} ({description}) from the list")
 
-        with open(relpath("../data/guild_data.json"), "w") as file:
+        with open(relpath("data/guild_data.json"), "w") as file:
             dump(self.bot.guild_data, file, indent=4)
 
-    async def check_if_changed(self, guild, entry, old_status):
-        result, new = await self.get_last_status(entry['id'])
+    async def check_if_changed(self, guild, entry, old_status) -> tuple:
+        (result, new) = await self.get_last_status(entry['id'])
 
-        if new['date'] != old_status['date'] or new['time'] != old_status['time']:
+        if new['date'] != old_status['date']:
             entry['status'] = new
-            if new['description'].upper() == "ΑΠΟΣΤΟΛΗ ΠΑΡΑΔΟΘΗΚΕ":
+            if new['delivered']:
                 for i in self.bot.guild_data[guild]['elta']:
                     if i['id'] == entry['id']:
                         self.bot.guild_data[guild]['elta'].remove(i)
 
-            with open(relpath("../data/guild_data.json"), "w") as file:
+            with open(relpath("data/guild_data.json"), "w") as file:
                 dump(self.bot.guild_data, file, indent=4)
 
-            return True, new
-        return False, None
+            return (True, new)
+        return (False, None)
 
     @tasks.loop(minutes=5.0)
     async def update_ids(self):
@@ -167,7 +168,7 @@ class Elta(commands.Cog):
             if updates_channel == 0:
                 continue
             for entry in self.bot.guild_data[guild]['elta']:
-                result, new = await self.check_if_changed(guild, entry, entry['status'])
+                (result, new) = await self.check_if_changed(guild, entry, entry['status'])
                 if result:
                     embed = discord.Embed(
                         title=entry['description'],
@@ -176,12 +177,12 @@ class Elta(commands.Cog):
                     )
                     embed.add_field(name="Location", value=new['location'], inline=True)
                     embed.add_field(name="Description", value=new['description'], inline=True)
-                    embed.add_field(name="Date", value=f"{new['date']}, {new['time']}", inline=False)
+                    embed.add_field(name="Date", value=f"{new['date']}", inline=False)
 
                     channel = self.bot.get_channel(updates_channel)
                     await channel.send(embed=embed)
 
-                    if new['description'].upper() == "ΑΠΟΣΤΟΛΗ ΠΑΡΑΔΟΘΗΚΕ":
+                    if new['delivered']:
                         await channel.send(f"Removed {entry['id']} ({entry['description']}) from the list")
 
     @update_ids.before_loop
@@ -189,5 +190,5 @@ class Elta(commands.Cog):
         await asyncio.sleep(120)
 
 
-def setup(bot):
+def setup(bot: commands.Bot):
     bot.add_cog(Elta(bot))
