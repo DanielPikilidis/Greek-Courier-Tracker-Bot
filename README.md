@@ -2,6 +2,9 @@ A python discord bot that tracks parcels from Greek couriers.
 
 It can function either as a simple parcel tracker by passing 1 or more ids or receive updates when a parcel moves by adding the ids.
 
+Currently it works with ACS, EasyMail, ELTA, Skroutz Last Mile and Speedex.
+I'm trying to add support for Geniki (and any others) but I don't have any tracking codes.
+
 Invite link: https://discord.com/api/oauth2/authorize?client_id=926129971037093929&permissions=18432&scope=bot
 
 Or if you want to host it yourself:
@@ -54,3 +57,10 @@ cd CourierTracking
 5. Restart the container: 
 
 `docker start courier_tracking`
+
+
+## Contributing
+
+If you have tracking codes for other couriers that are not yet supported, you can send them
+and I will add support for that courier.
+Or you can create a cog for the courier yourself if you want to. Make sure it has the same format with the other cogs (same methods)

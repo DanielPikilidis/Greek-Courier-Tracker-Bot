@@ -8,7 +8,7 @@ from sys import stdout
 
 
 class Main(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.started = False
         self.couriers = []
@@ -17,33 +17,33 @@ class Main(commands.Cog):
     async def on_ready(self):
         if not self.started:
             with open("data/guild_data.json", "r") as file:
-                bot.guild_data = loads(file.read())
+                self.bot.guild_data = loads(file.read())
 
             for filename in listdir("./cogs"):
                 if filename.endswith(".py"):
                     try:
                         self.bot.load_extension(f"cogs.{filename[:-3]}")
-                        bot.logger.info(f"Loaded cog: {filename[:-3].capitalize()}")
+                        self.bot.logger.info(f"Loaded cog: {filename[:-3].capitalize()}")
                         self.couriers.append(self.bot.get_cog(filename[:-3].capitalize()))
                     except:
-                        bot.logger.warning(f"Failed to load cog: {filename[:-3].capitalize()}")
+                        self.bot.logger.warning(f"Failed to load cog: {filename[:-3].capitalize()}")
             
             self.started = True
-            bot.logger.info(f"Bot logged in and ready. Joined guilds: {len(bot.guilds)}")
+            self.bot.logger.info(f"Bot logged in and ready. Joined guilds: {len(bot.guilds)}")
 
-        await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="?/help"))
+        await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="?/help"))
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
-        bot.logger.info(f"Joined guild {guild.id}")
-        bot.guild_data[str(guild.id)] = {"updates_channel": 0, "acs": [], "easymail": [], "elta": [], "speedex": [], "geniki": [], "skroutz": []}
+        self.bot.logger.info(f"Joined guild {guild.id}")
+        self.bot.guild_data[str(guild.id)] = {"updates_channel": 0, "acs": [], "easymail": [], "elta": [], "speedex": [], "geniki": [], "skroutz": []}
         with open(relpath("data/guild_data.json"), "w") as file:
             dump(bot.guild_data, file, indent=4)
 
     @commands.Cog.listener()
     async def on_guild_remove(self, guild):
-        bot.logger.info(f"Left guild {guild.id}")
-        bot.guild_data.pop(str(guild.id))
+        self.bot.logger.info(f"Left guild {guild.id}")
+        self.bot.guild_data.pop(str(guild.id))
         with open(relpath("data/guild_data.json"), "w") as file:
             dump(bot.guild_data, file, indent=4)
 
@@ -59,6 +59,7 @@ class Main(commands.Cog):
         embed.add_field(name="easymail", value="Returns available commands for EasyMail.", inline=False)
         embed.add_field(name="elta", value="Returns available commands for ELTA.", inline=False)
         embed.add_field(name="speedex", value="Returns available commands for Speedex.", inline=False)
+        embed.add_field(name="skroutz", value="Returns available commands for Skroutz Last Mile.", inline=False)
 
         embed.add_field(
             name="?/tracking-update",
@@ -66,11 +67,20 @@ class Main(commands.Cog):
             inline=False
         )
 
-        embed.add_field(
-            name="?/updates <#channel>",
-            value="Sets the channel for the updates (when a parcel moves).",
-            inline=False
-        )
+        if not self.bot.guild_data[str(ctx.guild.id)]["updates_channel"]:
+            embed.add_field(
+                name="?/updates <#channel>",
+                value = "Sets the channel to send updates when a parcel moves.\n"
+                        "A channel for updates has not been set, so no updates will be sent!",
+                inline=False
+            )
+        else:
+            embed.add_field(
+                name="?/updates <#channel>",
+                value="Sets the channel to send updates when a parcel moves",
+                inline=False
+            )
+
 
         embed.add_field(
             name="?/track <id>",
@@ -82,16 +92,15 @@ class Main(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(name="updates")
-    async def updates(self, ctx: commands.Context, *, args):
-        args = args.split()
-        channel = bot.get_channel(int(args[0][2:-1]))
+    async def updates(self, ctx: commands.Context, arg1):
+        channel = self.bot.get_channel(int(arg1[2:-1]))
         if channel is None:
             await ctx.send("Invalid channel.")
             return
 
-        bot.guild_data[str(ctx.guild.id)]['updates_channel'] = str(channel.id)
+        self.bot.guild_data[str(ctx.guild.id)]['updates_channel'] = str(channel.id)
         await ctx.send("Updates channel changed.")
-        with open(relpath("../data/guild_data.json"), "w") as file:
+        with open(relpath("data/guild_data.json"), "w") as file:
             dump(bot.guild_data, file, indent=4)
 
     @updates.error
@@ -100,19 +109,22 @@ class Main(commands.Cog):
             await ctx.send("Missing channel arguments.")
 
     @commands.command(name="track")
-    async def track(self, ctx: commands.Context, *, args):
-        courier = None
-        id = args.split()[0]
+    async def track(self, ctx: commands.Context, arg1):
+        id = arg1
         if len(id) == 10:
             courier = next(i for i in self.couriers if i.qualified_name == "Acs")
+            await courier.send_status(ctx, id, True)
         elif len(id) == 11:
             courier = next(i for i in self.couriers if i.qualified_name == "Easymail")
+            await courier.send_status(ctx, id, True)
         elif len(id) == 12:
             courier = next(i for i in self.couriers if i.qualified_name == "Speedex")
+            await courier.send_status(ctx, id, True)
         elif len(id) == 13:
-            courier = next(i for i in self.couriers if i.qualified_name == "Elta")
-
-        await courier.send_status(ctx, id)
+            couriers = ["Elta", "Skroutz"]
+            for c in couriers:
+                courier = next(i for i in self.couriers if i.qualified_name == c)
+                await courier.send_status(ctx, id, True)
 
     @track.error
     async def track_error(self, ctx: commands.Context, error):
@@ -121,11 +133,11 @@ class Main(commands.Cog):
 
     @commands.command(name="tracking-update")
     async def tracking_update(self, ctx: commands.Context):
-        guild = bot.guild_data[str(ctx.guild.id)]
+        guild = self.bot.guild_data[str(ctx.guild.id)]
         for i in self.couriers:
             cur = i.qualified_name.lower()
             for entry in guild[cur]:
-                await i.send_status(ctx, entry['id'], entry['description'])
+                await i.send_status(ctx, entry['id'], False, entry['description'])
 
 
 def setup_logger() -> logging.Logger:
