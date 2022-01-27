@@ -50,7 +50,7 @@ cd CourierTracking
 
 3. Create and start the container:
 
-`docker run -d -v $(pwd)/data:/data -v $(pwd)/logs:/logs --name courier_tracking courier_tracking`
+`docker run -d -v $(pwd)/data:/data -v $(pwd)/logs:/logs --restart unless-stopped --name courier_tracking courier_tracking`
 
 4. A new directory named "data" is now created. Paste your api key in the config.txt file inside that directory.
 

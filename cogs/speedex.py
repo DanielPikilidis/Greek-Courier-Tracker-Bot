@@ -166,13 +166,13 @@ class Speedex(commands.Cog):
 
         if new['date'] != old_status['date']:
             entry['status'] = new
-            if new['description'].upper() == "Η ΑΠΟΣΤΟΛΗ ΠΑΡΑΔΟΘΗΚΕ":
+            if new['delivered']:
                 for i in self.bot.guild_data[guild]['speedex']:
                     if i['id'] == entry['id']:
                         self.bot.guild_data[guild]['speedex'].remove(i)
 
-                    with open(relpath("data/guild_data.json"), "w") as file:
-                        dump(self.bot.guild_data, file, indent=4)
+            with open(relpath("data/guild_data.json"), "w") as file:
+                dump(self.bot.guild_data, file, indent=4)
 
             return (True, new)
         return (False, None)

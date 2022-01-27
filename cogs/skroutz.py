@@ -157,8 +157,8 @@ class Skroutz(commands.Cog):
                     if i['id'] == entry['id']:
                         self.bot.guild_data[guild]['skroutz'].remove(i)
 
-                    with open(relpath("data/guild_data.json"), "w") as file:
-                        dump(self.bot.guild_data, file, indent=4)
+            with open(relpath("data/guild_data.json"), "w") as file:
+                dump(self.bot.guild_data, file, indent=4)
 
             return (True, new)
         return (False, None)
