@@ -113,10 +113,15 @@ class Skroutz(commands.Cog):
         date = last_status["createdAt"]
         date = f"{date[8:10]}-{date[5:7]}-{date[0:4]}, {date[11:19]}"
 
+        if last_status["driver"]:
+            location = last_status["driver"]["city"].capitalize()
+        else:
+            location = "\u200b"
+
         return (0, {
             "date": date, 
             "description": last_status["description"], 
-            "location": last_status["driver"]["city"].capitalize(),
+            "location": location,
             "delivered": delivered
         })
 
