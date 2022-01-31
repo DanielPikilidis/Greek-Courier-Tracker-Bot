@@ -1,44 +1,45 @@
 import discord
 from discord.ext import commands, tasks
-from requests import post
+from requests import get
 from json import dump, loads
 from os.path import relpath
 
-class Elta(commands.Cog):
+class Dhl(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        self.api_key = "INSERT_API_KEY_HERE"
         self.update_ids.start()
-        self.colour = 0x016FAE
-
-    @commands.group(name="elta", invoke_without_command=True)
-    async def elta(self, ctx: commands.Context):
+        self.colour = 0xFFCC00
+        
+    @commands.group(name="dhl", invoke_without_command=True)
+    async def dhl(self, ctx: commands.Context):
         embed = discord.Embed(
-            title="ELTA help",
-            description="All the available subcommands for ELTA.",
-            color=0x016fae
+            title="DHL help",
+            description="All the available subcommands for DHL.",
+            color=self.colour
         )
 
-        embed.add_field(name="?/elta track <id1> <id2> ...", value="Returns current status for the parcel(s)", inline=False)
-        embed.add_field(name="?/elta add <id> <description>", value="Adds the id to the list.", inline=False)
-        embed.add_field(name="?/elta edit <id> <new description>", value = "Replaces the old description with the new.", inline=False)
-        embed.add_field(name="?/elta remove <id>", value="Removed the id from the list.", inline=False)
+        embed.add_field(name="?/dhl track <id1> <id2> ...", value="Returns current status for the parcel(s)", inline=False)
+        embed.add_field(name="?/dhl add <id> <description>", value="Adds the id to the list.", inline=False)
+        embed.add_field(name="?/dhl edit <id> <new description>", value = "Replaces the old description with the new.", inline=False)
+        embed.add_field(name="?/dhl remove <id>", value="Removed the id from the list.", inline=False)
 
-        embed.set_footer(text=f"elta help requested by: {ctx.author.display_name}")
+        embed.set_footer(text=f"DHL help requested by: {ctx.author.display_name}")
         await ctx.send(embed=embed)
 
-    @elta.command(name="track")
+    @dhl.command(name="track")
     async def track(self, ctx: commands.Context, *, args):
         for id in args.split():
             await self.send_status(ctx, id, False)
 
-    @elta.command(name="add")
+    @dhl.command(name="add")
     async def add(self, ctx: commands.Context, *, args):
         args = args.split()
         id = args[0]
         description = " ".join(args[1:])
         await self.store_id(ctx, id, description)
 
-    @elta.command(name="edit")
+    @dhl.command(name="edit")
     async def edit(self, ctx: commands.Context, *, args):
         args = args.split()
         id = args[0]
@@ -46,7 +47,7 @@ class Elta(commands.Cog):
         await self.remove_id(ctx, id)
         await self.store_id(ctx, id, description)
 
-    @elta.command(name="remove")
+    @dhl.command(name="remove")
     async def remove(self, ctx: commands.Context, *, args):
         for id in args.split():
             await self.remove_id(ctx, id)
@@ -89,13 +90,13 @@ class Elta(commands.Cog):
 
         embed = discord.Embed(
             title=title,
-            url=f"https://itemsearch.elta.gr/Query/Direct/{id}",
+            url=f"https://mydhl.express.dhl/gr/el/tracking.html#/results?id={id}",
             color=self.colour
         )
 
         embed.add_field(name="Location", value=status['location'], inline=True)
         embed.add_field(name="Description", value=status['description'], inline=True)
-        embed.add_field(name="Date", value=status['date'], inline=False)
+        embed.add_field(name="Date", value=f"{status['date']}", inline=False)
 
         await ctx.send(embed=embed)
 
@@ -103,25 +104,29 @@ class Elta(commands.Cog):
             await self.remove_id(ctx, id)
 
     async def get_last_status(self, id) -> tuple:
-        data = {"number": id}
-        response = post("https://www.elta-courier.gr/track.php", data=data)
+        headers = {
+            "Accept": "application/json",
+            "DHL-API-Key": self.api_key
+        }
 
-        if response.status_code == 400:
-            return (1, None)
+        params = {
+            "trackingNumber": id,
+            "service": "express"
+        }
 
-        formatted_response = loads(response.content)['result'][id]
-
-        if formatted_response['status'] == 0:
+        response = get(f"https://api-eu.dhl.com/track/shipments", params=params, headers=headers)
+        if response.status_code == 400 or response.status_code == 404:
             return (1, None)
         
-        last_status = formatted_response['result'][-1]
-
+        data = loads(response.text)
+        package = data["shipments"][0]["status"]
+        date = package["timestamp"]
         return (0, {
-            "date": f"{last_status['date']}, {last_status['time']}",
-            "description": last_status["status"].capitalize(),
-            "location": last_status["place"].capitalize(),
-            "delivered": last_status["status"] == "ΑΠΟΣΤΟΛΗ ΠΑΡΑΔΟΘΗΚΕ-ΧΩΡΙΣ ΣΤΟΙΧΕΙΟ ΠΑΡΑΔΟΣΗΣ"
-        })
+                "date": f"{date[8:10]}-{date[5:7]}-{date[0:4]}, {date[11:19]}", 
+                "description": package["location"]["address"]["addressLocality"], 
+                "location": package["description"], 
+                "delivered": package["statusCode"] == "delivered"
+            })
 
     async def store_id(self, ctx: commands.Context, id, description):
         (result, status) = await self.get_last_status(id)
@@ -129,20 +134,19 @@ class Elta(commands.Cog):
             await ctx.send(f"Parcel ({id}) not found")
             return
         
-        if not next((i for i in self.bot.guild_data[str(ctx.guild.id)]['elta'] if i['id'] == id), None):
-            self.bot.guild_data[str(ctx.guild.id)]['elta'].append({"id": id, "description": description, "status": status})
+        if not next((i for i in self.bot.guild_data[str(ctx.guild.id)]['dhl'] if i['id'] == id), None):
+            self.bot.guild_data[str(ctx.guild.id)]['dhl'].append({"id": id, "description": description, "status": status})
             await ctx.send(f"Added {id} ({description}) to the list.")
-            
             with open(relpath("data/guild_data.json"), "w") as file:
                 dump(self.bot.guild_data, file, indent=4)
         else:
-            await ctx.send("Parcel already in list.\nIf you want to change its description use ?/elta edit")
+            await ctx.send("Parcel already in list.\nIf you want to change its description use ?/dhl edit")
 
     async def remove_id(self, ctx: commands.Context, id):
-        parcel = next((i for i in self.bot.guild_data[str(ctx.guild.id)]['elta'] if i['id'] == id), None)
+        parcel = next((i for i in self.bot.guild_data[str(ctx.guild.id)]['dhl'] if i['id'] == id), None)
         if parcel:
             description = parcel['description']
-            self.bot.guild_data[str(ctx.guild.id)]['elta'].remove(parcel)
+            self.bot.guild_data[str(ctx.guild.id)]['dhl'].remove(parcel)
             await ctx.send(f"Removed {id} ({description}) from the list")
 
             with open(relpath("data/guild_data.json"), "w") as file:
@@ -156,9 +160,9 @@ class Elta(commands.Cog):
         if new['date'] != old_status['date']:
             entry['status'] = new
             if new['delivered']:
-                for i in self.bot.guild_data[guild]['elta']:
+                for i in self.bot.guild_data[guild]['dhl']:
                     if i['id'] == entry['id']:
-                        self.bot.guild_data[guild]['elta'].remove(i)
+                        self.bot.guild_data[guild]['dhl'].remove(i)
 
             with open(relpath("data/guild_data.json"), "w") as file:
                 dump(self.bot.guild_data, file, indent=4)
@@ -172,12 +176,12 @@ class Elta(commands.Cog):
             updates_channel = int(self.bot.guild_data[guild]['updates_channel'])
             if updates_channel == 0:
                 continue
-            for entry in self.bot.guild_data[guild]['elta']:
+            for entry in self.bot.guild_data[guild]['dhl']:
                 (result, new) = await self.check_if_changed(guild, entry, entry['status'])
                 if result:
                     embed = discord.Embed(
                         title=entry['description'],
-                        url=f"https://itemsearch.elta.gr/Query/Direct/{entry['id']}",
+                        url=f"https://www.dhlcourier.net/el/web/greece/track-and-trace?action=getTracking&cid=2ΒΞ45143&generalCode={entry['id']}&p_p_id=ACSCustomersAreaTrackTrace_WAR_ACSCustomersAreaportlet&stop_mobile=yes",
                         color=self.colour
                     )
                     embed.add_field(name="Location", value=new['location'], inline=True)
@@ -189,7 +193,7 @@ class Elta(commands.Cog):
 
                     if new['delivered']:
                         await channel.send(f"Removed {entry['id']} ({entry['description']}) from the list")
-
+                        
 
 def setup(bot: commands.Bot):
-    bot.add_cog(Elta(bot))
+    bot.add_cog(Dhl(bot))

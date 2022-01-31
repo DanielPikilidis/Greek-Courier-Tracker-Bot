@@ -10,13 +10,14 @@ class Easymail(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.update_ids.start()
+        self.colour = 0x712E7E
         
     @commands.group(name="easymail", invoke_without_command=True)
     async def easymail(self, ctx: commands.Context):
         embed = discord.Embed(
             title="EasyMail help",
             description="All the available subcommands for EasyMail.",
-            color=discord.Color.purple()
+            color=self.colour
         )
 
         embed.add_field(name="?/easymail track <id1> <id2> ...", value="Returns current status for the parcel(s)", inline=False)
@@ -91,7 +92,7 @@ class Easymail(commands.Cog):
         embed = discord.Embed(
             title=title,
             url=f"https://trackntrace.easymail.gr/{id}",
-            color=discord.Color.purple()
+            color=self.colour
         )
 
         embed.add_field(name="Location", value=status['location'], inline=True)
@@ -177,7 +178,7 @@ class Easymail(commands.Cog):
                     embed = discord.Embed(
                         title=entry['description'],
                         url=f"https://trackntrace.easymail.gr/{entry['id']}",
-                        color=discord.Color.purple()
+                        color=self.colour
                     )
                     embed.add_field(name="Location", value=new['location'], inline=True)
                     embed.add_field(name="Description", value=new['description'], inline=True)

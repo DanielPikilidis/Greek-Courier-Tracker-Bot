@@ -9,13 +9,14 @@ class Speedex(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.update_ids.start()
+        self.colour = 0x01B23B
 
     @commands.group(name="speedex", invoke_without_command=True)
     async def speedex(self, ctx: commands.Context):
         embed = discord.Embed(
             title="Speedex help",
             description="All the available subcommands for Speedex.",
-            color=discord.Color.green()
+            color=self.colour
         )
 
         embed.add_field(name="?/speedex track <id1> <id2> ...", value="Returns current status for the parcel(s)", inline=False)
@@ -90,7 +91,7 @@ class Speedex(commands.Cog):
         embed = discord.Embed(
             title=title,
             url=f"http://www.speedex.gr/isapohi.asp?voucher_code={id}&searcggo=Submit",
-            color=discord.Color.green()
+            color=self.colour
         )
 
         embed.add_field(name="Location", value=status['location'], inline=True)
@@ -189,7 +190,7 @@ class Speedex(commands.Cog):
                     embed = discord.Embed(
                         title=entry['description'],
                         url=f"http://www.speedex.gr/isapohi.asp?voucher_code={entry['id']}&searcggo=Submit",
-                        color=discord.Color.green()
+                        color=self.colour
                     )
                     embed.add_field(name="Location", value=new['location'], inline=True)
                     embed.add_field(name="Description", value=new['description'], inline=True)

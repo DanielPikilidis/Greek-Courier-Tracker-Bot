@@ -8,6 +8,7 @@ class Acs(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.update_ids.start()
+        self.colour = 0xE42229
         
     @commands.group(name="acs", invoke_without_command=True)
     async def acs(self, ctx: commands.Context):
@@ -89,7 +90,7 @@ class Acs(commands.Cog):
         embed = discord.Embed(
             title=title,
             url=f"https://www.acscourier.net/el/web/greece/track-and-trace?action=getTracking&cid=2ΒΞ45143&generalCode={id}&p_p_id=ACSCustomersAreaTrackTrace_WAR_ACSCustomersAreaportlet&stop_mobile=yes",
-            color=discord.Color.red()
+            color=self.colour
         )
 
         embed.add_field(name="Location", value=status['location'], inline=True)
@@ -184,7 +185,7 @@ class Acs(commands.Cog):
                     embed = discord.Embed(
                         title=entry['description'],
                         url=f"https://www.acscourier.net/el/web/greece/track-and-trace?action=getTracking&cid=2ΒΞ45143&generalCode={entry['id']}&p_p_id=ACSCustomersAreaTrackTrace_WAR_ACSCustomersAreaportlet&stop_mobile=yes",
-                        color=discord.Color.red()
+                        color=self.colour
                     )
                     embed.add_field(name="Location", value=new['location'], inline=True)
                     embed.add_field(name="Description", value=new['description'], inline=True)

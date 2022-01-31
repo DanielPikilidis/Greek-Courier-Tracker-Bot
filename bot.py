@@ -12,6 +12,7 @@ class Main(commands.Cog):
         self.bot = bot
         self.started = False
         self.couriers = []
+        self.ENABLE_DHL = False
         
     @commands.Cog.listener()
     async def on_ready(self):
@@ -20,6 +21,10 @@ class Main(commands.Cog):
                 self.bot.guild_data = loads(file.read())
 
             for filename in listdir("./cogs"):
+                if filename[:-3] == "dhl" and not self.ENABLE_DHL:
+                    self.bot.logger.info("DHL disabled, not loading")
+                    continue
+
                 if filename.endswith(".py"):
                     try:
                         self.bot.load_extension(f"cogs.{filename[:-3]}")
@@ -36,7 +41,7 @@ class Main(commands.Cog):
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
         self.bot.logger.info(f"Joined guild {guild.id}")
-        self.bot.guild_data[str(guild.id)] = {"updates_channel": 0, "acs": [], "easymail": [], "elta": [], "speedex": [], "geniki": [], "skroutz": []}
+        self.bot.guild_data[str(guild.id)] = {"updates_channel": 0, "acs": [], "easymail": [], "elta": [], "speedex": [], "geniki": [], "skroutz": [], "dhl": []}
         with open(relpath("data/guild_data.json"), "w") as file:
             dump(bot.guild_data, file, indent=4)
 
@@ -60,6 +65,8 @@ class Main(commands.Cog):
         embed.add_field(name="elta", value="Returns available commands for ELTA.", inline=False)
         embed.add_field(name="speedex", value="Returns available commands for Speedex.", inline=False)
         embed.add_field(name="skroutz", value="Returns available commands for Skroutz Last Mile.", inline=False)
+        if self.ENABLE_DHL:
+            embed.add_field(name="dhl", value="Returns available commands for DHL.", inline=False)
 
         embed.add_field(
             name="?/tracking-update",
