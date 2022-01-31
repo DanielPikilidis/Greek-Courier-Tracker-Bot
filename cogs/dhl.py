@@ -181,7 +181,7 @@ class Dhl(commands.Cog):
                 if result:
                     embed = discord.Embed(
                         title=entry['description'],
-                        url=f"https://www.dhlcourier.net/el/web/greece/track-and-trace?action=getTracking&cid=2ΒΞ45143&generalCode={entry['id']}&p_p_id=ACSCustomersAreaTrackTrace_WAR_ACSCustomersAreaportlet&stop_mobile=yes",
+                        url=f"https://mydhl.express.dhl/gr/el/tracking.html#/results?id={entry['id']}",
                         color=self.colour
                     )
                     embed.add_field(name="Location", value=new['location'], inline=True)
