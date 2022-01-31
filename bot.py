@@ -119,6 +119,11 @@ class Main(commands.Cog):
     async def track(self, ctx: commands.Context, arg1):
         id = arg1
         if len(id) == 10:
+            couriers = ["Acs", "Dhl"] if self.ENABLE_DHL else ["Acs"]
+            for c in couriers:
+                courier = next(i for i in self.couriers if i.qualified_name == c)
+                await courier.send_status(ctx, id, True)
+            
             courier = next(i for i in self.couriers if i.qualified_name == "Acs")
             await courier.send_status(ctx, id, True)
         elif len(id) == 11:

@@ -123,8 +123,8 @@ class Dhl(commands.Cog):
         date = package["timestamp"]
         return (0, {
                 "date": f"{date[8:10]}-{date[5:7]}-{date[0:4]}, {date[11:19]}", 
-                "description": package["location"]["address"]["addressLocality"], 
-                "location": package["description"], 
+                "location": package["location"]["address"]["addressLocality"].capitalize(),
+                "description": package["description"], 
                 "delivered": package["statusCode"] == "delivered"
             })
 
@@ -170,7 +170,7 @@ class Dhl(commands.Cog):
             return (True, new)
         return (False, None)
 
-    @tasks.loop(minutes=5.0)
+    @tasks.loop(minutes=10.0)
     async def update_ids(self):
         for guild in self.bot.guild_data:
             updates_channel = int(self.bot.guild_data[guild]['updates_channel'])
