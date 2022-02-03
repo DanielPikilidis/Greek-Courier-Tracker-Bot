@@ -4,7 +4,7 @@ from requests import get
 from json import dump
 from os.path import relpath
 
-class Acs(commands.Cog):
+class Acs(commands.Cog, name="ACS"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.update_ids.start()
@@ -15,7 +15,7 @@ class Acs(commands.Cog):
         embed = discord.Embed(
             title="ACS help",
             description="All the available subcommands for ACS.",
-            color=discord.Color.red()
+            color=self.colour
         )
 
         embed.add_field(name="?/acs track <id1> <id2> ...", value="Returns current status for the parcel(s)", inline=False)
@@ -99,7 +99,7 @@ class Acs(commands.Cog):
 
         await ctx.send(embed=embed)
 
-        if status['delivered']:
+        if status['delivered'] and not silent:
             await self.remove_id(ctx, id)
 
     async def get_last_status(self, id) -> tuple:

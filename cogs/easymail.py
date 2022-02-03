@@ -6,7 +6,7 @@ from json import dump
 from os.path import relpath
 
 
-class Easymail(commands.Cog):
+class EasyMail(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.update_ids.start()
@@ -101,7 +101,7 @@ class Easymail(commands.Cog):
 
         await ctx.send(embed=embed)
 
-        if status['delivered']:
+        if status['delivered'] and not silent:
             await self.remove_id(ctx, id)
 
     async def get_last_status(self, id) -> tuple:
@@ -192,4 +192,4 @@ class Easymail(commands.Cog):
 
 
 def setup(bot: commands.Bot):
-    bot.add_cog(Easymail(bot))
+    bot.add_cog(EasyMail(bot))

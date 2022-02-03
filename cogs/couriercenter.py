@@ -1,44 +1,45 @@
 import discord
 from discord.ext import commands, tasks
+from bs4 import BeautifulSoup as bs
 from requests import post
-from json import dump, loads
+from json import dump
 from os.path import relpath
 
-class Elta(commands.Cog, name="ELTA"):
+class CourierCenter(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.update_ids.start()
-        self.colour = 0x016FAE
-
-    @commands.group(name="elta", invoke_without_command=True)
-    async def elta(self, ctx: commands.Context):
+        self.colour = 0xF37029
+        
+    @commands.group(name="couriercenter", invoke_without_command=True)
+    async def couriercenter(self, ctx: commands.Context):
         embed = discord.Embed(
-            title="ELTA help",
-            description="All the available subcommands for ELTA.",
-            color=0x016fae
+            title="CourierCenter help",
+            description="All the available subcommands for CourierCenter.",
+            color=self.colour
         )
 
-        embed.add_field(name="?/elta track <id1> <id2> ...", value="Returns current status for the parcel(s)", inline=False)
-        embed.add_field(name="?/elta add <id> <description>", value="Adds the id to the list.", inline=False)
-        embed.add_field(name="?/elta edit <id> <new description>", value = "Replaces the old description with the new.", inline=False)
-        embed.add_field(name="?/elta remove <id>", value="Removed the id from the list.", inline=False)
+        embed.add_field(name="?/couriercenter track <id1> <id2> ...", value="Returns current status for the parcel(s)", inline=False)
+        embed.add_field(name="?/couriercenter add <id> <description>", value="Adds the id to the list.", inline=False)
+        embed.add_field(name="?/couriercenter edit <id> <new description>", value = "Replaces the old description with the new.", inline=False)
+        embed.add_field(name="?/couriercenter remove <id>", value="Removed the id from the list.", inline=False)
 
-        embed.set_footer(text=f"elta help requested by: {ctx.author.display_name}")
+        embed.set_footer(text=f"CourierCenter help requested by: {ctx.author.display_name}")
         await ctx.send(embed=embed)
 
-    @elta.command(name="track")
+    @couriercenter.command(name="track")
     async def track(self, ctx: commands.Context, *, args):
         for id in args.split():
             await self.send_status(ctx, id, False)
 
-    @elta.command(name="add")
+    @couriercenter.command(name="add")
     async def add(self, ctx: commands.Context, *, args):
         args = args.split()
         id = args[0]
         description = " ".join(args[1:])
         await self.store_id(ctx, id, description)
 
-    @elta.command(name="edit")
+    @couriercenter.command(name="edit")
     async def edit(self, ctx: commands.Context, *, args):
         args = args.split()
         id = args[0]
@@ -46,7 +47,7 @@ class Elta(commands.Cog, name="ELTA"):
         await self.remove_id(ctx, id)
         await self.store_id(ctx, id, description)
 
-    @elta.command(name="remove")
+    @couriercenter.command(name="remove")
     async def remove(self, ctx: commands.Context, *, args):
         for id in args.split():
             await self.remove_id(ctx, id)
@@ -89,13 +90,13 @@ class Elta(commands.Cog, name="ELTA"):
 
         embed = discord.Embed(
             title=title,
-            url=f"https://itemsearch.elta.gr/Query/Direct/{id}",
+            description=f"CourierCenter doesn't have direct links. Tracking id: {id}",
             color=self.colour
         )
 
         embed.add_field(name="Location", value=status['location'], inline=True)
         embed.add_field(name="Description", value=status['description'], inline=True)
-        embed.add_field(name="Date", value=status['date'], inline=False)
+        embed.add_field(name="Date", value=f"{status['date']}", inline=False)
 
         await ctx.send(embed=embed)
 
@@ -103,24 +104,24 @@ class Elta(commands.Cog, name="ELTA"):
             await self.remove_id(ctx, id)
 
     async def get_last_status(self, id) -> tuple:
-        data = {"number": id}
-        response = post("https://www.elta-courier.gr/track.php", data=data)
-
+        response = post("https://www.courier.gr/track/result/", data={"tracknr": id})
         if response.status_code == 400:
             return (1, None)
 
-        formatted_response = loads(response.content)['result'][id]
+        soup = bs(response.text, features="html.parser")
 
-        if formatted_response['status'] == 0:
+        if soup.find("h4", {"class": "error"}):
             return (1, None)
-        
-        last_status = formatted_response['result'][-1]
+
+        last_status = soup.find("div", {"class": "track-table"}).contents[3]
+        date = last_status.find("div", {"id": "date"}).contents[0]
+        time = last_status.find("div", {"id": "time"}).contents[0]
 
         return (0, {
-            "date": f"{last_status['date']}, {last_status['time']}",
-            "description": last_status["status"].capitalize(),
-            "location": last_status["place"].capitalize(),
-            "delivered": last_status["status"] == "ΑΠΟΣΤΟΛΗ ΠΑΡΑΔΟΘΗΚΕ-ΧΩΡΙΣ ΣΤΟΙΧΕΙΟ ΠΑΡΑΔΟΣΗΣ"
+            "date": f"{date}, {time}", 
+            "description": last_status.find("div", {"id": "action"}).contents[0].capitalize(),
+            "location": last_status.find("div", {"id": "area"}).contents[0].title(),
+            "delivered": soup.find("div", {"class": "status"}).contents[3].contents[0] == "(29) DeliveryCompleted"
         })
 
     async def store_id(self, ctx: commands.Context, id, description):
@@ -129,20 +130,19 @@ class Elta(commands.Cog, name="ELTA"):
             await ctx.send(f"Parcel ({id}) not found")
             return
         
-        if not next((i for i in self.bot.guild_data[str(ctx.guild.id)]['elta'] if i['id'] == id), None):
-            self.bot.guild_data[str(ctx.guild.id)]['elta'].append({"id": id, "description": description, "status": status})
+        if not next((i for i in self.bot.guild_data[str(ctx.guild.id)]['couriercenter'] if i['id'] == id), None):
+            self.bot.guild_data[str(ctx.guild.id)]['couriercenter'].append({"id": id, "description": description, "status": status})
             await ctx.send(f"Added {id} ({description}) to the list.")
-            
             with open(relpath("data/guild_data.json"), "w") as file:
                 dump(self.bot.guild_data, file, indent=4)
         else:
-            await ctx.send("Parcel already in list.\nIf you want to change its description use ?/elta edit")
+            await ctx.send("Parcel already in list.\nIf you want to change its description use ?/couriercenter edit")
 
     async def remove_id(self, ctx: commands.Context, id):
-        parcel = next((i for i in self.bot.guild_data[str(ctx.guild.id)]['elta'] if i['id'] == id), None)
+        parcel = next((i for i in self.bot.guild_data[str(ctx.guild.id)]['couriercenter'] if i['id'] == id), None)
         if parcel:
             description = parcel['description']
-            self.bot.guild_data[str(ctx.guild.id)]['elta'].remove(parcel)
+            self.bot.guild_data[str(ctx.guild.id)]['couriercenter'].remove(parcel)
             await ctx.send(f"Removed {id} ({description}) from the list")
 
             with open(relpath("data/guild_data.json"), "w") as file:
@@ -156,9 +156,9 @@ class Elta(commands.Cog, name="ELTA"):
         if new['date'] != old_status['date']:
             entry['status'] = new
             if new['delivered']:
-                for i in self.bot.guild_data[guild]['elta']:
+                for i in self.bot.guild_data[guild]['couriercenter']:
                     if i['id'] == entry['id']:
-                        self.bot.guild_data[guild]['elta'].remove(i)
+                        self.bot.guild_data[guild]['couriercenter'].remove(i)
 
             with open(relpath("data/guild_data.json"), "w") as file:
                 dump(self.bot.guild_data, file, indent=4)
@@ -172,12 +172,12 @@ class Elta(commands.Cog, name="ELTA"):
             updates_channel = int(self.bot.guild_data[guild]['updates_channel'])
             if updates_channel == 0:
                 continue
-            for entry in self.bot.guild_data[guild]['elta']:
+            for entry in self.bot.guild_data[guild]['couriercenter']:
                 (result, new) = await self.check_if_changed(guild, entry, entry['status'])
                 if result:
                     embed = discord.Embed(
                         title=entry['description'],
-                        url=f"https://itemsearch.elta.gr/Query/Direct/{entry['id']}",
+                        description=f"CourierCenter doesn't have direct links. Tracking id: {entry['id']}",
                         color=self.colour
                     )
                     embed.add_field(name="Location", value=new['location'], inline=True)
@@ -189,7 +189,7 @@ class Elta(commands.Cog, name="ELTA"):
 
                     if new['delivered']:
                         await channel.send(f"Removed {entry['id']} ({entry['description']}) from the list")
-
+                        
 
 def setup(bot: commands.Bot):
-    bot.add_cog(Elta(bot))
+    bot.add_cog(CourierCenter(bot))

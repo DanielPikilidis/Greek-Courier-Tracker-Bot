@@ -99,7 +99,7 @@ class Skroutz(commands.Cog):
 
         await ctx.send(embed=embed)
 
-        if status['delivered']:
+        if status['delivered'] and not silent:
             await self.remove_id(ctx, id)
 
     async def get_last_status(self, id) -> tuple:

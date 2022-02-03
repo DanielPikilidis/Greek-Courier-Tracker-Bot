@@ -4,7 +4,7 @@ from requests import get
 from json import dump, loads
 from os.path import relpath
 
-class Dhl(commands.Cog):
+class Dhl(commands.Cog, name="DHL"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.api_key = "INSERT_API_KEY_HERE"
@@ -100,7 +100,7 @@ class Dhl(commands.Cog):
 
         await ctx.send(embed=embed)
 
-        if status['delivered']:
+        if status['delivered'] and not silent:
             await self.remove_id(ctx, id)
 
     async def get_last_status(self, id) -> tuple:

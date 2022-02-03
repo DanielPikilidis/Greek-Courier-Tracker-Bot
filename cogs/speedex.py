@@ -100,12 +100,15 @@ class Speedex(commands.Cog):
 
         await ctx.send(embed=embed)
 
-        if status['delivered']:
+        if status['delivered'] and not silent:
             await self.remove_id(ctx, id)
 
     async def get_last_status(self, id) -> tuple:
-        html = get(f"http://www.speedex.gr/speedex/NewTrackAndTrace.aspx?number={id}").text
-        soup = bs(html, features="html.parser")
+        response = get(f"http://www.speedex.gr/speedex/NewTrackAndTrace.aspx?number={id}")
+        if response.status_code == 400:
+            return (1, None)
+
+        soup = bs(response.text, features="html.parser")
         timeline_section = soup.find("section", {"id": "timeline"})
 
         if timeline_section.text.find("Δεν βρέθηκαν αποτελέσματα.") != -1:

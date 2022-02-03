@@ -11,7 +11,6 @@ class Main(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.started = False
-        self.couriers = []
         self.ENABLE_DHL = False
         
     @commands.Cog.listener()
@@ -29,7 +28,6 @@ class Main(commands.Cog):
                     try:
                         self.bot.load_extension(f"cogs.{filename[:-3]}")
                         self.bot.logger.info(f"Loaded cog: {filename[:-3].capitalize()}")
-                        self.couriers.append(self.bot.get_cog(filename[:-3].capitalize()))
                     except:
                         self.bot.logger.warning(f"Failed to load cog: {filename[:-3].capitalize()}")
             
@@ -41,7 +39,7 @@ class Main(commands.Cog):
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
         self.bot.logger.info(f"Joined guild {guild.id}")
-        self.bot.guild_data[str(guild.id)] = {"updates_channel": 0, "acs": [], "easymail": [], "elta": [], "speedex": [], "geniki": [], "skroutz": [], "dhl": []}
+        self.bot.guild_data[str(guild.id)] = {"updates_channel": 0, "acs": [], "easymail": [], "elta": [], "speedex": [], "geniki": [], "skroutz": [], "dhl": [], "couriercenter": []}
         with open(relpath("data/guild_data.json"), "w") as file:
             dump(bot.guild_data, file, indent=4)
 
@@ -67,6 +65,7 @@ class Main(commands.Cog):
         embed.add_field(name="skroutz", value="Returns available commands for Skroutz Last Mile.", inline=False)
         if self.ENABLE_DHL:
             embed.add_field(name="dhl", value="Returns available commands for DHL.", inline=False)
+        embed.add_field(name="couriercenter", value="Returns available command for CourierCenter.", inline=False)
 
         embed.add_field(
             name="?/tracking-update",
@@ -119,23 +118,20 @@ class Main(commands.Cog):
     async def track(self, ctx: commands.Context, arg1):
         id = arg1
         if len(id) == 10:
-            couriers = ["Acs", "Dhl"] if self.ENABLE_DHL else ["Acs"]
-            for c in couriers:
-                courier = next(i for i in self.couriers if i.qualified_name == c)
+            couriers = [self.bot.get_cog("ACS")]
+            if self.ENABLE_DHL:
+                couriers.append(self.bot.get_cog("DHL"))
+            for courier in couriers:
                 await courier.send_status(ctx, id, True)
-            
-            courier = next(i for i in self.couriers if i.qualified_name == "Acs")
-            await courier.send_status(ctx, id, True)
         elif len(id) == 11:
-            courier = next(i for i in self.couriers if i.qualified_name == "Easymail")
+            courier = self.bot.get_cog("EasyMail")
             await courier.send_status(ctx, id, True)
         elif len(id) == 12:
-            courier = next(i for i in self.couriers if i.qualified_name == "Speedex")
+            courier = self.bot.get_cog("Speedex")
             await courier.send_status(ctx, id, True)
         elif len(id) == 13:
-            couriers = ["Elta", "Skroutz"]
-            for c in couriers:
-                courier = next(i for i in self.couriers if i.qualified_name == c)
+            couriers = [self.bot.get_cog("ELTA"), self.bot.get_cog("Skroutz")]
+            for courier in couriers:
                 await courier.send_status(ctx, id, True)
 
     @track.error
@@ -146,10 +142,12 @@ class Main(commands.Cog):
     @commands.command(name="tracking-update")
     async def tracking_update(self, ctx: commands.Context):
         guild = self.bot.guild_data[str(ctx.guild.id)]
-        for i in self.couriers:
-            cur = i.qualified_name.lower()
-            for entry in guild[cur]:
-                await i.send_status(ctx, entry['id'], False, entry['description'])
+        for cog in self.bot.cogs:
+            if cog == "Main":
+                continue
+            courier = self.bot.get_cog(cog)
+            for entry in guild[cog.lower()]:
+                await courier.send_status(ctx, entry['id'], False, entry['description'])
 
 
 def setup_logger() -> logging.Logger:
