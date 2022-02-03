@@ -2,7 +2,7 @@ A python discord bot that tracks parcels from Greek couriers.
 
 It can function either as a simple parcel tracker by passing 1 or more ids or receive updates when a parcel moves by adding the ids.
 
-Currently it works with ACS, EasyMail, ELTA, Skroutz Last Mile, Speedex and DHL (read below for DHL).
+Currently it works with ACS, EasyMail, ELTA, Skroutz Last Mile, Speedex, DHL (more info for DHL below) and CourierCenter.
 I'm trying to add support for Geniki (and others) but I don't have any tracking codes.
 
 #### Notes for DHL tracking
