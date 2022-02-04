@@ -90,7 +90,7 @@ class CourierCenter(commands.Cog):
 
         embed = discord.Embed(
             title=title,
-            description=f"CourierCenter doesn't have direct links. Tracking id: {id}",
+            url=f"https://courier.gr/track/result?tracknr={id}",
             color=self.colour
         )
 
@@ -177,7 +177,7 @@ class CourierCenter(commands.Cog):
                 if result:
                     embed = discord.Embed(
                         title=entry['description'],
-                        description=f"CourierCenter doesn't have direct links. Tracking id: {entry['id']}",
+                        url=f"https://courier.gr/track/result?tracknr={entry['id']}",
                         color=self.colour
                     )
                     embed.add_field(name="Location", value=new['location'], inline=True)
