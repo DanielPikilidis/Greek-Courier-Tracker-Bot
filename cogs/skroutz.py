@@ -110,21 +110,32 @@ class Skroutz(commands.Cog):
         package = response.json()
         delivered = (package["deliveredAt"] != None)
 
-        last_status = package["trackingDetails"][-1]
-        date = last_status["createdAt"]
-        date = f"{date[8:10]}-{date[5:7]}-{date[0:4]}, {date[11:19]}"
-
-        if last_status["driver"]:
-            location = last_status["driver"]["city"].capitalize()
+        if not len(package["trackingDetails"]):
+            date = package["createdAt"]
+            date = f"{date[8:10]}-{date[5:7]}-{date[0:4]}, {date[11:19]}"
+            return (0, {
+                "date": date,
+                "description": package["status"],
+                "location": "\u200b",
+                "delivered": delivered
+            })
         else:
-            location = "\u200b"
+            last_status = package["trackingDetails"][-1]
+            date = last_status["createdAt"]
+            date = f"{date[8:10]}-{date[5:7]}-{date[0:4]}, {date[11:19]}"
 
-        return (0, {
-            "date": date, 
-            "description": last_status["description"], 
-            "location": location,
-            "delivered": delivered
-        })
+            if last_status["driver"]:
+                location = last_status["driver"]["city"].capitalize()
+            else:
+                location = "\u200b"
+            
+            return (0, {
+                "date": date, 
+                "description": last_status["description"], 
+                "location": location,
+                "delivered": delivered
+            })
+
 
     async def store_id(self, ctx: commands.Context, id, description):
         (result, status) = await self.get_last_status(id)
