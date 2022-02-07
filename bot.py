@@ -181,5 +181,12 @@ if __name__ == "__main__":
             key = config['keys']['discord']
         bot.run(key)
     else:
-        open("data/config.txt", "w").close()
+        with open("data/config.json", "w") as file:
+            config = {
+                "keys": {
+                    "discord": "",
+                    "dhl": ""
+                }
+            }
+            dump(config, file, indent=4)
         print("Paste your key in config.txt file in data/")
