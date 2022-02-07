@@ -11,7 +11,6 @@ class Main(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.started = False
-        self.ENABLE_DHL = False
         
     @commands.Cog.listener()
     async def on_ready(self):
@@ -20,10 +19,6 @@ class Main(commands.Cog):
                 self.bot.guild_data = loads(file.read())
 
             for filename in listdir("./cogs"):
-                if filename[:-3] == "dhl" and not self.ENABLE_DHL:
-                    self.bot.logger.info("DHL disabled, not loading")
-                    continue
-
                 if filename.endswith(".py"):
                     try:
                         self.bot.load_extension(f"cogs.{filename[:-3]}")
@@ -59,13 +54,12 @@ class Main(commands.Cog):
         )
 
         embed.add_field(name="acs", value="Returns available commands for ACS.", inline=False)
+        embed.add_field(name="couriercenter", value="Returns available command for CourierCenter.", inline=False)
+        embed.add_field(name="dhl", value="Returns available commands for DHL.", inline=False)
         embed.add_field(name="easymail", value="Returns available commands for EasyMail.", inline=False)
         embed.add_field(name="elta", value="Returns available commands for ELTA.", inline=False)
-        embed.add_field(name="speedex", value="Returns available commands for Speedex.", inline=False)
         embed.add_field(name="skroutz", value="Returns available commands for Skroutz Last Mile.", inline=False)
-        if self.ENABLE_DHL:
-            embed.add_field(name="dhl", value="Returns available commands for DHL.", inline=False)
-        embed.add_field(name="couriercenter", value="Returns available command for CourierCenter.", inline=False)
+        embed.add_field(name="speedex", value="Returns available commands for Speedex.", inline=False)
 
         embed.add_field(
             name="?/tracking-update",
@@ -118,9 +112,7 @@ class Main(commands.Cog):
     async def track(self, ctx: commands.Context, arg1):
         id = arg1
         if len(id) == 10:
-            couriers = [self.bot.get_cog("ACS")]
-            if self.ENABLE_DHL:
-                couriers.append(self.bot.get_cog("DHL"))
+            couriers = [self.bot.get_cog("ACS"), self.bot.get_cog("DHL")]
             for courier in couriers:
                 await courier.send_status(ctx, id, True)
         elif len(id) == 11:
@@ -183,9 +175,10 @@ if __name__ == "__main__":
         with open("data/guild_data.json", "w") as file:
             dump({}, file, indent=4)
 
-    if exists("data/config.txt"):
-        with open("data/config.txt", "r") as file:
-            key = file.read()
+    if exists("data/config.json"):
+        with open("data/config.json", "r") as file:
+            config = loads(file.read())
+            key = config['keys']['discord']
         bot.run(key)
     else:
         open("data/config.txt", "w").close()

@@ -2,20 +2,20 @@ A python discord bot that tracks parcels from Greek couriers.
 
 It can function either as a simple parcel tracker by passing 1 or more ids or receive updates when a parcel moves by adding the ids.
 
-Currently it works with ACS, EasyMail, ELTA, Skroutz Last Mile, Speedex, DHL (more info for DHL below) and CourierCenter.
-I'm trying to add support for Geniki (and others) but I don't have any tracking codes.
+Currently supported couriers:
+  - ACS
+  - CourierCenter
+  - DHL
+  - EasyMail
+  - Elta
+  - Skroutz
+  - Speedex
 
-#### Notes for DHL tracking
-A free API key from dhl only allows up to 250 requests per day, which isn't a lot. Getting higher limit
-is not free. So in order to use DHL tracking you have to host the bot yourself and use your own API key.
-Paste the API key in the dhl.py file and then enable the cog in the bot.py file (Main class). By default it's disabled.
+Working on adding Geniki (I need tracking ids)
 
-Invite link: https://discord.com/api/oauth2/authorize?client_id=926129971037093929&permissions=18432&scope=bot
-
-Or if you want to host it yourself:
 
 ## Installation
-For any method you will need an api key from discord.
+For any method you will need an api key from discord (https://discord.com/developers/docs/intro) and one from DHL (https://developer.dhl.com/).
 
 ### Local:
 
@@ -34,7 +34,7 @@ cd CourierTracking
 
 `python3 bot.py`
 
-4. A new directory named "data" is now created. Paste your api key in the config.txt file inside that directory.
+4. A new directory named "data" is now created. Paste your api keys in the config.json file inside that directory.
 
 5. Start the bot again:
 
@@ -57,7 +57,7 @@ cd CourierTracking
 
 `docker run -d -v $(pwd)/data:/data -v $(pwd)/logs:/logs --restart unless-stopped --name courier_tracking courier_tracking`
 
-4. A new directory named "data" is now created. Paste your api key in the config.txt file inside that directory.
+4. A new directory named "data" is now created. Paste your api keys in the config.json file inside that directory.
 
 5. Restart the container: 
 

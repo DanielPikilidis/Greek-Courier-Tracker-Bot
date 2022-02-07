@@ -7,7 +7,9 @@ from os.path import relpath
 class Dhl(commands.Cog, name="DHL"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.api_key = "INSERT_API_KEY_HERE"
+        with open("data/config.json", "r") as file:
+            config = loads(file.read())
+            self.api_key = config['keys']['dhl']
         self.update_ids.start()
         self.colour = 0xFFCC00
         
