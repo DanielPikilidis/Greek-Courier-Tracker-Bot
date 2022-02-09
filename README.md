@@ -7,15 +7,13 @@ Currently supported couriers:
   - CourierCenter
   - DHL
   - EasyMail
-  - Elta
-  - Skroutz
-  - Speedex
-
-Working on adding Geniki (I need tracking ids)
-
+  - ELTA Courier
+  - Skroutz Last Mile
+  - Speedex Courier
+  - Geniki Taxydromiki
 
 ## Installation
-For any method you will need an api key from discord (https://discord.com/developers/docs/intro) and one from DHL (https://developer.dhl.com/).
+For any method you will need an api key from discord (https://discord.com/developers/docs/intro) and one from DHL (https://developer.dhl.com/). (Both are free)
 
 ### Local:
 

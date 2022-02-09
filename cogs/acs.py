@@ -99,9 +99,6 @@ class Acs(commands.Cog, name="ACS"):
 
         await ctx.send(embed=embed)
 
-        if status['delivered'] and not silent:
-            await self.remove_id(ctx, id)
-
     async def get_last_status(self, id) -> tuple:
         response = get(f"https://api.acscourier.net/api/parcels/search/{id}")
         if response.status_code == 400:

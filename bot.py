@@ -22,9 +22,9 @@ class Main(commands.Cog):
                 if filename.endswith(".py"):
                     try:
                         self.bot.load_extension(f"cogs.{filename[:-3]}")
-                        self.bot.logger.info(f"Loaded cog: {filename[:-3].capitalize()}")
+                        self.bot.logger.info(f"Loaded cog: {filename[:-3]}")
                     except:
-                        self.bot.logger.warning(f"Failed to load cog: {filename[:-3].capitalize()}")
+                        self.bot.logger.warning(f"Failed to load cog: {filename[:-3]}")
             
             self.started = True
             self.bot.logger.info(f"Bot logged in and ready. Joined guilds: {len(bot.guilds)}")
@@ -50,7 +50,7 @@ class Main(commands.Cog):
         embed = discord.Embed(
             title="Help",
             description="All the available commands.",
-            color=discord.Color.blue()
+            color=0xFFFFFF
         )
 
         embed.add_field(name="acs", value="Returns available commands for ACS.", inline=False)
@@ -60,6 +60,7 @@ class Main(commands.Cog):
         embed.add_field(name="elta", value="Returns available commands for ELTA.", inline=False)
         embed.add_field(name="skroutz", value="Returns available commands for Skroutz Last Mile.", inline=False)
         embed.add_field(name="speedex", value="Returns available commands for Speedex.", inline=False)
+        embed.add_field(name="geniki", value="Returns available commands for Geniki.", inline=False)
 
         embed.add_field(
             name="?/tracking-update",
@@ -70,17 +71,16 @@ class Main(commands.Cog):
         if not self.bot.guild_data[str(ctx.guild.id)]["updates_channel"]:
             embed.add_field(
                 name="?/updates <#channel>",
-                value = "Sets the channel to send updates when a parcel moves.\n"
+                value = "Sets the channel to send updates when a parcel updates.\n"
                         "A channel for updates has not been set, so no updates will be sent!",
                 inline=False
             )
         else:
             embed.add_field(
                 name="?/updates <#channel>",
-                value="Sets the channel to send updates when a parcel moves",
+                value="Sets the channel to send updates when a parcel updates",
                 inline=False
             )
-
 
         embed.add_field(
             name="?/track <id>",
@@ -110,9 +110,10 @@ class Main(commands.Cog):
 
     @commands.command(name="track")
     async def track(self, ctx: commands.Context, arg1):
+        # This is not a good solution and needs to be changed / improved.
         id = arg1
         if len(id) == 10:
-            couriers = [self.bot.get_cog("ACS"), self.bot.get_cog("DHL")]
+            couriers = [self.bot.get_cog("ACS"), self.bot.get_cog("DHL"), self.bot.get_cog("Geniki")]
             for courier in couriers:
                 await courier.send_status(ctx, id, True)
         elif len(id) == 11:

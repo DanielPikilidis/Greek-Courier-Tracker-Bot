@@ -102,9 +102,6 @@ class Dhl(commands.Cog, name="DHL"):
 
         await ctx.send(embed=embed)
 
-        if status['delivered'] and not silent:
-            await self.remove_id(ctx, id)
-
     async def get_last_status(self, id) -> tuple:
         headers = {
             "Accept": "application/json",

@@ -101,16 +101,12 @@ class EasyMail(commands.Cog):
 
         await ctx.send(embed=embed)
 
-        if status['delivered'] and not silent:
-            await self.remove_id(ctx, id)
-
     async def get_last_status(self, id) -> tuple:
         html = get(f"https://trackntrace.easymail.gr/{id}").text
 
-        if html.find("Δεν βρέθηκε η Αποστολή. Παρακαλώ επικοινωνήστε με το κατάστημα.") != -1:
-            return (1, None)
-
         soup = bs(html, features="html.parser")
+        if soup.find("div", {"class": "cus-alert"}):
+            return (1, None)
 
         current = soup.find_all("tbody")[-1]
         last = current.contents[1]

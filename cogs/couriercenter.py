@@ -100,9 +100,6 @@ class CourierCenter(commands.Cog):
 
         await ctx.send(embed=embed)
 
-        if status['delivered'] and not silent:
-            await self.remove_id(ctx, id)
-
     async def get_last_status(self, id) -> tuple:
         response = post("https://www.courier.gr/track/result/", data={"tracknr": id})
         if response.status_code == 400:

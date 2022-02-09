@@ -99,9 +99,6 @@ class Elta(commands.Cog, name="ELTA"):
 
         await ctx.send(embed=embed)
 
-        if status['delivered'] and not silent:
-            await self.remove_id(ctx, id)
-
     async def get_last_status(self, id) -> tuple:
         data = {"number": id}
         response = post("https://www.elta-courier.gr/track.php", data=data)
