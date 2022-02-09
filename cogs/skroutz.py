@@ -167,7 +167,7 @@ class Skroutz(commands.Cog):
     async def check_if_changed(self, guild, entry, old_status) -> tuple:
         (result, new) = await self.get_last_status(entry['id'])
 
-        if new['date'] != old_status['date']:
+        if new['date'] != old_status['date'] or new['delivered'] != old_status['delivered']:
             entry['status'] = new
             if new['delivered']:
                 for i in self.bot.guild_data[guild]['skroutz']:
