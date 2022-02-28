@@ -12,6 +12,12 @@ Currently supported couriers:
   - Speedex Courier
   - Geniki Taxydromiki
 
+Invite Link: https://discord.com/api/oauth2/authorize?client_id=947975790409154620&permissions=18432&scope=bot.
+
+Note: It is self hosted so expect some downtime
+
+Or if you want to host it yourself:
+
 ## Installation
 For any method you will need an api key from discord (https://discord.com/developers/docs/intro) and one from DHL (https://developer.dhl.com/). (Both are free)
 
