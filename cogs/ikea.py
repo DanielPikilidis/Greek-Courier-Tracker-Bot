@@ -110,19 +110,23 @@ class IKEA(commands.Cog):
         if page.find("div", {"class": "error"}):
             return (1, None)
 
-        current = page.find("div", {"class": "orderTrack__elm--currentStatus"})
-        _description = current.find("div", {"class": "orderTrack__text"}).next
-        _date = current.find("div", {"class": "orderTrack__text__date"}).next
-
-        date = ' '.join(_date.split())
-        if _date == "\n":
+        checkpoints = [page.find("div", {"class": "orderTrack__elm--success"})]
+        checkpoints += list(page.find_all("div", {"class": "orderTrack__elm--complete"}))
+        delivered = (len(checkpoints) == 4) 
+        current = checkpoints[-1]
+       
+        description = current.find("div", {"class": "orderTrack__text"}).next
+       
+        date = current.find("div", {"class": "orderTrack__text__date"}).next
+        date = ' '.join(date.split())
+        if date == "\n":
             date = "\u200b"
 
         return (0, {
-            "date": f"{date}", 
-            "description": ' '.join(_description.split()),
+            "date": ' '.join(date.split()), 
+            "description": ' '.join(description.split()),
             "location": "\u200b",
-            "delivered": False
+            "delivered": delivered
         })
 
     async def store_id(self, ctx: commands.Context, id, description):
