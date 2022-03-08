@@ -34,7 +34,7 @@ class Main(commands.Cog):
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
         self.bot.logger.info(f"Joined guild {guild.id}")
-        self.bot.guild_data[str(guild.id)] = {"updates_channel": 0, "acs": [], "easymail": [], "elta": [], "speedex": [], "geniki": [], "skroutz": [], "dhl": [], "couriercenter": []}
+        self.bot.guild_data[str(guild.id)] = {"updates_channel": 0, "acs": [], "easymail": [], "elta": [], "speedex": [], "geniki": [], "skroutz": [], "dhl": [], "couriercenter": [], "ikea": []}
         with open(relpath("data/guild_data.json"), "w") as file:
             dump(bot.guild_data, file, indent=4)
 

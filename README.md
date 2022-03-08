@@ -11,6 +11,7 @@ Currently supported couriers:
   - Skroutz Last Mile
   - Speedex Courier
   - Geniki Taxydromiki
+  - IKEA (Beta)
 
 Invite Link: https://discord.com/api/oauth2/authorize?client_id=947975790409154620&permissions=18432&scope=bot.
 
