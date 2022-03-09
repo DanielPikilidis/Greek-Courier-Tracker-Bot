@@ -34,7 +34,7 @@ class Main(commands.Cog):
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
         self.bot.logger.info(f"Joined guild {guild.id}")
-        self.bot.guild_data[str(guild.id)] = {"updates_channel": 0, "acs": [], "easymail": [], "elta": [], "speedex": [], "geniki": [], "skroutz": [], "dhl": [], "couriercenter": [], "ikea": []}
+        self.bot.guild_data[str(guild.id)] = {"updates_channel": 0, "acs": [], "easymail": [], "elta": [], "speedex": [], "geniki": [], "skroutz": [], "dhl": [], "couriercenter": [], "ikea": [], "delatolas": []}
         with open(relpath("data/guild_data.json"), "w") as file:
             dump(bot.guild_data, file, indent=4)
 
@@ -61,6 +61,8 @@ class Main(commands.Cog):
         embed.add_field(name="skroutz", value="Returns available commands for Skroutz Last Mile.", inline=False)
         embed.add_field(name="speedex", value="Returns available commands for Speedex.", inline=False)
         embed.add_field(name="geniki", value="Returns available commands for Geniki.", inline=False)
+        embed.add_field(name="ikea", value="Returns available commands for IKEA Courier.", inline=False)
+        embed.add_field(name="delatolas", value="Returns available commands for Delatolas Courier.", inline=False)
 
         embed.add_field(
             name="?/tracking-update",
@@ -120,8 +122,9 @@ class Main(commands.Cog):
             courier = self.bot.get_cog("EasyMail")
             await courier.send_status(ctx, id, True)
         elif len(id) == 12:
-            courier = self.bot.get_cog("Speedex")
-            await courier.send_status(ctx, id, True)
+            couriers = [self.bot.get_cog("Speedex"), self.bot.get_cog("Delatolas"), self.bot.get_cog("IKEA")]
+            for courier in couriers:
+                await courier.send_status(ctx, id, True)
         elif len(id) == 13:
             couriers = [self.bot.get_cog("ELTA"), self.bot.get_cog("Skroutz")]
             for courier in couriers:
