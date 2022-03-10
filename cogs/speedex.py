@@ -19,7 +19,7 @@ class Speedex(commands.Cog):
             color=self.colour
         )
 
-        embed.add_field(name="?/speedex track <id1> <id2> ...", value="Returns current status for the parcel(s)", inline=False)
+        embed.add_field(name="?/speedex track <id1> <id2> ...", value="Returns current status for the package(s)", inline=False)
         embed.add_field(name="?/speedex add <id> <description>", value="Adds the id to the list.", inline=False)
         embed.add_field(name="?/speedex edit <id> <new description>", value = "Replaces the old description with the new.", inline=False)
         embed.add_field(name="?/speedex remove <id>", value="Removed the id from the list.", inline=False)
@@ -80,7 +80,7 @@ class Speedex(commands.Cog):
         (result, status) = await self.get_last_status(id)
         if result == 1:
             if not silent:
-                await ctx.send(f"Parcel ({id}) not found")
+                await ctx.send(f"package ({id}) not found")
             return
 
         if description:
@@ -138,7 +138,12 @@ class Speedex(commands.Cog):
     async def store_id(self, ctx: commands.Context, id, description):
         (result, status) = await self.get_last_status(id)
         if result == 1:
-            await ctx.send(f"Parcel ({id}) not found")
+            await ctx.send(f"package ({id}) not found")
+            return
+
+        if status["delivered"]:
+            await ctx.send("package already delivered")
+            await self.send_status(ctx, id, False)
             return
         
         if not next((i for i in self.bot.guild_data[str(ctx.guild.id)]['speedex'] if i['id'] == id), None):
@@ -148,19 +153,19 @@ class Speedex(commands.Cog):
             with open(relpath("data/guild_data.json"), "w") as file:
                 dump(self.bot.guild_data, file, indent=4)
         else:
-            await ctx.send("Parcel already in list.\nIf you want to change its description use ?/speedex edit")
+            await ctx.send("package already in list.\nIf you want to change its description use ?/speedex edit")
 
     async def remove_id(self, ctx: commands.Context, id):
-        parcel = next((i for i in self.bot.guild_data[str(ctx.guild.id)]['speedex'] if i['id'] == id), None)
-        if parcel:
-            description = parcel['description']
-            self.bot.guild_data[str(ctx.guild.id)]['speedex'].remove(parcel)
+        package = next((i for i in self.bot.guild_data[str(ctx.guild.id)]['speedex'] if i['id'] == id), None)
+        if package:
+            description = package['description']
+            self.bot.guild_data[str(ctx.guild.id)]['speedex'].remove(package)
             await ctx.send(f"Removed {id} ({description}) from the list")
 
             with open(relpath("data/guild_data.json"), "w") as file:
                 dump(self.bot.guild_data, file, indent=4)
         else:
-            await ctx.send(f"Parcel {id} is not in the list.")
+            await ctx.send(f"package {id} is not in the list.")
 
     async def check_if_changed(self, guild, entry, old_status) -> tuple:
         (result, new) = await self.get_last_status(entry['id'])

@@ -53,16 +53,8 @@ class Main(commands.Cog):
             color=0xFFFFFF
         )
 
-        embed.add_field(name="acs", value="Returns available commands for ACS.", inline=False)
-        embed.add_field(name="couriercenter", value="Returns available command for CourierCenter.", inline=False)
-        embed.add_field(name="dhl", value="Returns available commands for DHL.", inline=False)
-        embed.add_field(name="easymail", value="Returns available commands for EasyMail.", inline=False)
-        embed.add_field(name="elta", value="Returns available commands for ELTA.", inline=False)
-        embed.add_field(name="skroutz", value="Returns available commands for Skroutz Last Mile.", inline=False)
-        embed.add_field(name="speedex", value="Returns available commands for Speedex.", inline=False)
-        embed.add_field(name="geniki", value="Returns available commands for Geniki.", inline=False)
-        embed.add_field(name="ikea", value="Returns available commands for IKEA Courier.", inline=False)
-        embed.add_field(name="delatolas", value="Returns available commands for Delatolas Courier.", inline=False)
+        for courier in self.bog.cogs:
+            embed.add_field(name=courier.lower(), value=f"Returns available commands for {courier}", inline=False)
 
         embed.add_field(
             name="?/tracking-update",
