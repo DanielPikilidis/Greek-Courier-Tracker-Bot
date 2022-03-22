@@ -100,7 +100,7 @@ class Acs(commands.Cog, name="ACS"):
         await ctx.send(embed=embed)
 
     async def get_last_status(self, id) -> tuple:
-        response = get(f"https://api.acscourier.net/api/packages/search/{id}")
+        response = get(f"https://api.acscourier.net/api/parcels/search/{id}")
         if response.status_code == 400:
             return (1, None)
 
