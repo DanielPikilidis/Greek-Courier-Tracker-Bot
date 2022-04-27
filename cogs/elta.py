@@ -120,7 +120,7 @@ class Elta(commands.Cog, name="ELTA"):
             "date": f"{last_status['date']}, {last_status['time']}",
             "description": last_status["status"].capitalize(),
             "location": last_status["place"].capitalize(),
-            "delivered": last_status["status"] == "ΑΠΟΣΤΟΛΗ ΠΑΡΑΔΟΘΗΚΕ-ΧΩΡΙΣ ΣΤΟΙΧΕΙΟ ΠΑΡΑΔΟΣΗΣ"
+            "delivered": last_status["status"] == "Αποστολή παραδόθηκε"
         })
 
     async def store_id(self, ctx: commands.Context, id, description):
