@@ -53,7 +53,9 @@ class Main(commands.Cog):
             color=0xFFFFFF
         )
 
-        for courier in self.bog.cogs:
+        for courier in self.bot.cogs:
+            if courier == "Main":
+                continue
             embed.add_field(name=courier.lower(), value=f"Returns available commands for {courier}", inline=False)
 
         embed.add_field(

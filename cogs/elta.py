@@ -106,7 +106,10 @@ class Elta(commands.Cog, name="ELTA"):
         if response.status_code == 400:
             return (1, None)
 
-        formatted_response = loads(response.content)['result'][id]
+        try:    
+            formatted_response = loads(response.content)['result'][id]
+        except:     # I saw a decoder error here once but I don't know what caused it.
+            return (1, None)
 
         if formatted_response['status'] == 0:
             return (1, None)
