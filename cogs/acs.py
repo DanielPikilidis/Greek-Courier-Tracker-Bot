@@ -1,15 +1,26 @@
 import discord
 from discord.ext import commands, tasks
-from requests import get
 from json import dump
 from os.path import relpath
+from selenium import webdriver
+from selenium.webdriver.firefox import options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.firefox.service import Service
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
+from webdriver_manager.firefox import GeckoDriverManager
+from bs4 import BeautifulSoup as bs
+from datetime import datetime
+
 
 class Acs(commands.Cog, name="ACS"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.update_ids.start()
         self.colour = 0xE42229
-        
+        self.driver = setup_selenium()
+
     @commands.group(name="acs", invoke_without_command=True)
     async def acs(self, ctx: commands.Context):
         embed = discord.Embed(
@@ -89,7 +100,7 @@ class Acs(commands.Cog, name="ACS"):
 
         embed = discord.Embed(
             title=title,
-            url=f"https://www.acscourier.net/el/web/greece/track-and-trace?action=getTracking&cid=2ΒΞ45143&generalCode={id}&p_p_id=ACSCustomersAreaTrackTrace_WAR_ACSCustomersAreaportlet&stop_mobile=yes",
+            url=f"https://www.acscourier.net/el/web/greece/track-and-trace?action=getTracking3&generalCode={id}",
             color=self.colour
         )
 
@@ -100,33 +111,46 @@ class Acs(commands.Cog, name="ACS"):
         await ctx.send(embed=embed)
 
     async def get_last_status(self, id) -> tuple:
-        response = get(f"https://api.acscourier.net/api/parcels/search/{id}")
-        if response.status_code == 400:
+        url = f"https://www.acscourier.net/el/web/greece/track-and-trace?action=getTracking&generalCode={id}"
+        self.driver.get(url)
+
+        try:
+            WebDriverWait(self.driver, 5).until(EC.visibility_of_element_located((By.TAG_NAME, 'app-parcels-search-results')))
+        except TimeoutException:
+            try:    # Trying 1 more time before giving up.
+                WebDriverWait(self.driver, 8).until(EC.visibility_of_element_located((By.TAG_NAME, 'app-parcels-search-results')))
+            except TimeoutException:
+                return (1, None)
+
+        soup = bs(self.driver.page_source, features="html.parser")
+        tables = soup.find_all("tbody")
+        tbody1 = tables[-2]
+        tbody2 = tables[-1]
+
+        status_list = tbody2.find_all("tr")
+
+        if len(status_list) == 0:   # Invalid id
             return (1, None)
 
-        package = (response.json())["items"][0]
-        if package["notes"] == "Η αποστολή δεν βρέθηκε":
-            return (1, None)
-            
-        delivered = package["isDelivered"]
+        last = status_list[-1]
 
-        if len(package["statusHistory"]) == 0:
-            return (0, {
-                "date": "\u200b", 
-                "description": "Προς Παραλαβη", 
-                "location": "\u200b",
-                "delivered": delivered
-            })
-        else:
-            last_status = package["statusHistory"][-1]
-            date = last_status["controlPointDate"]
-            date = f"{date[8:10]}-{date[5:7]}-{date[0:4]}, {date[11:19]}"
-            return (0, {
-                "date": date, 
-                "description": last_status["description"].capitalize(), 
-                "location": last_status["controlPoint"].capitalize(), 
-                "delivered": delivered
-            })
+        details = last.find_all("td")
+        dt = details[1].text
+        dt = dt.replace('μ.μ.', 'PM')
+        dt = dt.replace('π.μ.', 'AM')
+
+        try:
+            date = datetime.strptime(dt, ' %d/%m/%y, %I:%M %p ').strftime('%d/%m/%Y, %H:%M')
+        except ValueError:  # No idea what happens here
+            date = "\u200b"
+
+        return (0, {
+            "date": date,
+            "description": details[2].text.capitalize(),
+            "location": details[0].text.capitalize(),
+            "delivered": tbody1.find("tr", {"class": "delivered"}) != 0
+        })
+
 
     async def store_id(self, ctx: commands.Context, id, description):
         (result, status) = await self.get_last_status(id)
@@ -186,7 +210,7 @@ class Acs(commands.Cog, name="ACS"):
                 if result:
                     embed = discord.Embed(
                         title=entry['description'],
-                        url=f"https://www.acscourier.net/el/web/greece/track-and-trace?action=getTracking&cid=2ΒΞ45143&generalCode={entry['id']}&p_p_id=ACSCustomersAreaTrackTrace_WAR_ACSCustomersAreaportlet&stop_mobile=yes",
+                        url=f"https://www.acscourier.net/el/web/greece/track-and-trace?action=getTracking3&generalCode={entry['id']}",
                         color=self.colour
                     )
                     embed.add_field(name="Location", value=new['location'], inline=True)
@@ -199,6 +223,14 @@ class Acs(commands.Cog, name="ACS"):
                     if new['delivered']:
                         await channel.send(f"Removed {entry['id']} ({entry['description']}) from the list")
                         
+
+def setup_selenium() -> webdriver:
+    Options = options.Options()
+    Options.headless = True
+
+    driver = webdriver.Firefox(options=Options, service=Service(GeckoDriverManager().install()))
+    return driver
+
 
 def setup(bot: commands.Bot):
     bot.add_cog(Acs(bot))
