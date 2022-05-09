@@ -12,6 +12,9 @@ class Dhl(commands.Cog, name="DHL"):
             self.api_key = config['keys']['dhl']
         self.update_ids.start()
         self.colour = 0xFFCC00
+        self.tracking_url = "https://api-eu.dhl.com/track/shipments"
+        self.main_url = "https://mydhl.express.dhl/gr/el/tracking.html#/results?id="
+        self.logo = "https://i.imgur.com/Wg6ngJl.png"
         
     @commands.group(name="dhl", invoke_without_command=True)
     async def dhl(self, ctx: commands.Context):
@@ -26,6 +29,7 @@ class Dhl(commands.Cog, name="DHL"):
         embed.add_field(name="?/dhl edit <id> <new description>", value = "Replaces the old description with the new.", inline=False)
         embed.add_field(name="?/dhl remove <id>", value="Removed the id from the list.", inline=False)
 
+        embed.set_thumbnail(url=self.logo)
         embed.set_footer(text=f"DHL help requested by: {ctx.author.display_name}")
         await ctx.send(embed=embed)
 
@@ -92,7 +96,7 @@ class Dhl(commands.Cog, name="DHL"):
 
         embed = discord.Embed(
             title=title,
-            url=f"https://mydhl.express.dhl/gr/el/tracking.html#/results?id={id}",
+            url=f"{self.main_url}{id}",
             color=self.colour
         )
 
@@ -100,6 +104,7 @@ class Dhl(commands.Cog, name="DHL"):
         embed.add_field(name="Description", value=status['description'], inline=True)
         embed.add_field(name="Date", value=f"{status['date']}", inline=False)
 
+        embed.set_thumbnail(url=self.logo)
         await ctx.send(embed=embed)
 
     async def get_last_status(self, id) -> tuple:
@@ -113,7 +118,7 @@ class Dhl(commands.Cog, name="DHL"):
             "service": "express"
         }
 
-        response = get(f"https://api-eu.dhl.com/track/shipments", params=params, headers=headers)
+        response = get(self.tracking_url, params=params, headers=headers)
         if response.status_code == 400 or response.status_code == 404:
             return (1, None)
         
@@ -185,13 +190,14 @@ class Dhl(commands.Cog, name="DHL"):
                 if result:
                     embed = discord.Embed(
                         title=entry['description'],
-                        url=f"https://mydhl.express.dhl/gr/el/tracking.html#/results?id={entry['id']}",
+                        url=f"{self.main_url}{entry['id']}",
                         color=self.colour
                     )
                     embed.add_field(name="Location", value=new['location'], inline=True)
                     embed.add_field(name="Description", value=new['description'], inline=True)
                     embed.add_field(name="Date", value=f"{new['date']}", inline=False)
 
+                    embed.set_thumbnail(url=self.logo)
                     channel = self.bot.get_channel(updates_channel)
                     await channel.send(embed=embed)
 

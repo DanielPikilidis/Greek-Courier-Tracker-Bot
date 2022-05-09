@@ -9,6 +9,10 @@ class Skroutz(commands.Cog):
         self.bot = bot
         self.update_ids.start()
         self.colour = 0xF68B24
+        self.tracking_url = "https://api.sendx.gr/user/hp/"
+        self.main_url = "https://www.skroutzlastmile.gr/#"
+        self.logo = "https://i.imgur.com/FmhZYBQ.png"
+
         
     @commands.group(name="skroutz", invoke_without_command=True)
     async def skroutz(self, ctx: commands.Context):
@@ -23,6 +27,7 @@ class Skroutz(commands.Cog):
         embed.add_field(name="?/skroutz edit <id> <new description>", value = "Replaces the old description with the new.", inline=False)
         embed.add_field(name="?/skroutz remove <id>", value="Removed the id from the list.", inline=False)
 
+        embed.set_thumbnail(url=self.logo)
         embed.set_footer(text=f"Skroutz Last Mile help requested by: {ctx.author.display_name}")
         await ctx.send(embed=embed)
 
@@ -89,7 +94,7 @@ class Skroutz(commands.Cog):
 
         embed = discord.Embed(
             title=title,
-            url=f"https://www.skroutzlastmile.gr/#{id}",
+            url=f"{self.main_url}{id}",
             color=self.colour
         )
 
@@ -97,10 +102,11 @@ class Skroutz(commands.Cog):
         embed.add_field(name="Description", value=status['description'], inline=True)
         embed.add_field(name="Date", value=f"{status['date']}", inline=False)
 
+        embed.set_thumbnail(url=self.logo)
         await ctx.send(embed=embed)
 
     async def get_last_status(self, id) -> tuple:
-        response = get(f"https://api.sendx.gr/user/hp/{id}")
+        response = get(f"{self.tracking_url}{id}")
         if response.status_code == 400:
             return (1, None)
 
@@ -193,13 +199,14 @@ class Skroutz(commands.Cog):
                 if result:
                     embed = discord.Embed(
                         title=entry['description'],
-                        url=f"https://www.skroutzlastmile.gr/#{entry['id']}",
+                        url=f"{self.main_url}{entry['id']}",
                         color=self.colour
                     )
                     embed.add_field(name="Location", value=new['location'], inline=True)
                     embed.add_field(name="Description", value=new['description'], inline=True)
                     embed.add_field(name="Date", value=f"{new['date']}", inline=False)
 
+                    embed.set_thumbnail(url=self.logo)
                     channel = self.bot.get_channel(updates_channel)
                     await channel.send(embed=embed)
 

@@ -19,6 +19,9 @@ class Acs(commands.Cog, name="ACS"):
         self.bot = bot
         self.update_ids.start()
         self.colour = 0xE42229
+        self.tracking_url = "https://www.acscourier.net/el/web/greece/track-and-trace?action=getTracking3&generalCode="
+        self.main_url = "https://www.acscourier.net/el/web/greece/track-and-trace?action=getTracking3&generalCode="
+        self.logo = "https://i.imgur.com/Yk1WIrQ.jpg"
         self.driver = setup_selenium()
 
     @commands.group(name="acs", invoke_without_command=True)
@@ -34,6 +37,7 @@ class Acs(commands.Cog, name="ACS"):
         embed.add_field(name="?/acs edit <id> <new description>", value = "Replaces the old description with the new.", inline=False)
         embed.add_field(name="?/acs remove <id>", value="Removed the id from the list.", inline=False)
 
+        embed.set_thumbnail(url=self.logo)
         embed.set_footer(text=f"ACS help requested by: {ctx.author.display_name}")
         await ctx.send(embed=embed)
 
@@ -100,7 +104,7 @@ class Acs(commands.Cog, name="ACS"):
 
         embed = discord.Embed(
             title=title,
-            url=f"https://www.acscourier.net/el/web/greece/track-and-trace?action=getTracking3&generalCode={id}",
+            url=f"{self.main_url}{id}",
             color=self.colour
         )
 
@@ -108,10 +112,11 @@ class Acs(commands.Cog, name="ACS"):
         embed.add_field(name="Description", value=status['description'], inline=True)
         embed.add_field(name="Date", value=f"{status['date']}", inline=False)
 
+        embed.set_thumbnail(url=self.logo)
         await ctx.send(embed=embed)
 
     async def get_last_status(self, id) -> tuple:
-        url = f"https://www.acscourier.net/el/web/greece/track-and-trace?action=getTracking&generalCode={id}"
+        url = f"{self.tracking_url}{id}"
         self.driver.get(url)
 
         try:
@@ -210,13 +215,14 @@ class Acs(commands.Cog, name="ACS"):
                 if result:
                     embed = discord.Embed(
                         title=entry['description'],
-                        url=f"https://www.acscourier.net/el/web/greece/track-and-trace?action=getTracking3&generalCode={entry['id']}",
+                        url=f"{self.main_url}{entry['id']}",
                         color=self.colour
                     )
                     embed.add_field(name="Location", value=new['location'], inline=True)
                     embed.add_field(name="Description", value=new['description'], inline=True)
                     embed.add_field(name="Date", value=f"{new['date']}", inline=False)
 
+                    embed.set_thumbnail(url=self.logo)
                     channel = self.bot.get_channel(updates_channel)
                     await channel.send(embed=embed)
 

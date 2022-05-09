@@ -10,6 +10,9 @@ class CourierCenter(commands.Cog):
         self.bot = bot
         self.update_ids.start()
         self.colour = 0xF37029
+        self.tracking_url = "https://www.courier.gr/track/result/"
+        self.main_url = "https://courier.gr/track/result?tracknr="
+        self.logo = "https://i.imgur.com/w51MEA1.png"
         
     @commands.group(name="couriercenter", invoke_without_command=True)
     async def couriercenter(self, ctx: commands.Context):
@@ -24,6 +27,7 @@ class CourierCenter(commands.Cog):
         embed.add_field(name="?/couriercenter edit <id> <new description>", value = "Replaces the old description with the new.", inline=False)
         embed.add_field(name="?/couriercenter remove <id>", value="Removed the id from the list.", inline=False)
 
+        embed.set_thumbnail(url=self.logo)
         embed.set_footer(text=f"CourierCenter help requested by: {ctx.author.display_name}")
         await ctx.send(embed=embed)
 
@@ -90,7 +94,7 @@ class CourierCenter(commands.Cog):
 
         embed = discord.Embed(
             title=title,
-            url=f"https://courier.gr/track/result?tracknr={id}",
+            url=f"{self.main_url}{id}",
             color=self.colour
         )
 
@@ -98,10 +102,11 @@ class CourierCenter(commands.Cog):
         embed.add_field(name="Description", value=status['description'], inline=True)
         embed.add_field(name="Date", value=f"{status['date']}", inline=False)
 
+        embed.set_thumbnail(url=self.logo)
         await ctx.send(embed=embed)
 
     async def get_last_status(self, id) -> tuple:
-        response = post("https://www.courier.gr/track/result/", data={"tracknr": id})
+        response = post(self.tracking_url, data={"tracknr": id})
         if response.status_code == 400:
             return (1, None)
 
@@ -179,13 +184,14 @@ class CourierCenter(commands.Cog):
                 if result:
                     embed = discord.Embed(
                         title=entry['description'],
-                        url=f"https://courier.gr/track/result?tracknr={entry['id']}",
+                        url=f"{self.main_url}{entry['id']}",
                         color=self.colour
                     )
                     embed.add_field(name="Location", value=new['location'], inline=True)
                     embed.add_field(name="Description", value=new['description'], inline=True)
                     embed.add_field(name="Date", value=f"{new['date']}", inline=False)
 
+                    embed.set_thumbnail(url=self.logo)
                     channel = self.bot.get_channel(updates_channel)
                     await channel.send(embed=embed)
 

@@ -10,7 +10,10 @@ class IKEA(commands.Cog):
         self.bot = bot
         self.update_ids.start()
         self.colour = 0xFFDB00
-        
+        self.tracking_url = "https://www.ikea.gr/poreia-paraggelias/?OrderNumber="
+        self.main_url ="https://www.ikea.gr/poreia-paraggelias/?OrderNumber="
+        self.logo = "https://i.imgur.com/IL3bZLV.jpg"
+
     @commands.group(name="ikea", invoke_without_command=True)
     async def ikea(self, ctx: commands.Context):
         embed = discord.Embed(
@@ -24,6 +27,7 @@ class IKEA(commands.Cog):
         embed.add_field(name="?/ikea edit <id> <new description>", value = "Replaces the old description with the new.", inline=False)
         embed.add_field(name="?/ikea remove <id>", value="Removed the id from the list.", inline=False)
 
+        embed.set_thumbnail(url=self.logo)
         embed.set_footer(text=f"IKEA help requested by: {ctx.author.display_name}")
         await ctx.send(embed=embed)
 
@@ -90,7 +94,7 @@ class IKEA(commands.Cog):
 
         embed = discord.Embed(
             title=title,
-            url=f"https://www.ikea.gr/poreia-paraggelias/?OrderNumber={id}",
+            url=f"{self.main_url}{id}",
             color=self.colour
         )
 
@@ -98,10 +102,11 @@ class IKEA(commands.Cog):
         embed.add_field(name="Description", value=status['description'], inline=True)
         embed.add_field(name="Date", value=f"{status['date']}", inline=False)
 
+        embed.set_thumbnail(url=self.logo)
         await ctx.send(embed=embed)
 
     async def get_last_status(self, id) -> tuple:
-        response = get(f"https://www.ikea.gr/poreia-paraggelias/?OrderNumber={id}")
+        response = get(f"{self.tracking_url}{id}")
         if response.status_code == 400:
             return (1, None)
 
@@ -187,13 +192,14 @@ class IKEA(commands.Cog):
                 if result:
                     embed = discord.Embed(
                         title=entry['description'],
-                        url=f"https://www.ikea.gr/poreia-paraggelias/?OrderNumber={entry['id']}",
+                        url=f"{self.main_url}{entry['id']}",
                         color=self.colour
                     )
                     embed.add_field(name="Location", value=new['location'], inline=True)
                     embed.add_field(name="Description", value=new['description'], inline=True)
                     embed.add_field(name="Date", value=f"{new['date']}", inline=False)
 
+                    embed.set_thumbnail(url=self.logo)
                     channel = self.bot.get_channel(updates_channel)
                     await channel.send(embed=embed)
 

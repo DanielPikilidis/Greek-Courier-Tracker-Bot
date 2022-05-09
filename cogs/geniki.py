@@ -12,6 +12,9 @@ class Geniki(commands.Cog):
         self.bot = bot
         self.update_ids.start()
         self.colour = 0x005AA5
+        self.tracking_url = "https://www.taxydromiki.com/en/track/"
+        self.main_url = "https://www.taxydromiki.com/en/track/"
+        self.logo = "https://i.imgur.com/JGaa8zk.png"
         
     @commands.group(name="geniki", invoke_without_command=True)
     async def geniki(self, ctx: commands.Context):
@@ -26,6 +29,7 @@ class Geniki(commands.Cog):
         embed.add_field(name="?/geniki edit <id> <new description>", value = "Replaces the old description with the new.", inline=False)
         embed.add_field(name="?/geniki remove <id>", value="Removed the id from the list.", inline=False)
 
+        embed.set_thumbnail(url=self.logo)
         embed.set_footer(text=f"geniki help requested by: {ctx.author.display_name}")
         await ctx.send(embed=embed)
 
@@ -92,7 +96,7 @@ class Geniki(commands.Cog):
 
         embed = discord.Embed(
             title=title,
-            url=f"https://www.taxydromiki.com/en/track/{id}",
+            url=f"{self.main_url}{id}",
             color=self.colour
         )
 
@@ -100,10 +104,11 @@ class Geniki(commands.Cog):
         embed.add_field(name="Description", value=status['description'], inline=True)
         embed.add_field(name="Date", value=status['date'], inline=False)
 
+        embed.set_thumbnail(url=self.logo)
         await ctx.send(embed=embed)
 
     async def get_last_status(self, id) -> tuple:
-        html = get(f"https://www.taxydromiki.com/en/track/{id}").text
+        html = get(f"{self.tracking_url}{id}").text
 
         page = bs(html, features="html.parser")
         if page.find("div", {"class": "empty-text"}):
@@ -186,13 +191,14 @@ class Geniki(commands.Cog):
                 if result:
                     embed = discord.Embed(
                         title=entry['description'],
-                        url=f"https://www.taxydromiki.com/en/track/{entry['id']}",
+                        url=f"{self.main_url}{entry['id']}",
                         color=self.colour
                     )
                     embed.add_field(name="Location", value=new['location'], inline=True)
                     embed.add_field(name="Description", value=new['description'], inline=True)
                     embed.add_field(name="Date", value=f"{new['date']}", inline=False)
 
+                    embed.set_thumbnail(url=self.logo)
                     channel = self.bot.get_channel(updates_channel)
                     await channel.send(embed=embed)
 

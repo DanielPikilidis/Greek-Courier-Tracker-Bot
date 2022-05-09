@@ -11,6 +11,9 @@ class EasyMail(commands.Cog):
         self.bot = bot
         self.update_ids.start()
         self.colour = 0x712E7E
+        self.tracking_url = "https://trackntrace.easymail.gr/"
+        self.main_url = "https://trackntrace.easymail.gr/"
+        self.logo = "https://i.imgur.com/f0PLGma.png"
         
     @commands.group(name="easymail", invoke_without_command=True)
     async def easymail(self, ctx: commands.Context):
@@ -25,6 +28,7 @@ class EasyMail(commands.Cog):
         embed.add_field(name="?/easymail edit <id> <new description>", value = "Replaces the old description with the new.", inline=False)
         embed.add_field(name="?/easymail remove <id>", value="Removed the id from the list.", inline=False)
 
+        embed.set_thumbnail(url=self.logo)
         embed.set_footer(text=f"easymail help requested by: {ctx.author.display_name}")
         await ctx.send(embed=embed)
 
@@ -91,7 +95,7 @@ class EasyMail(commands.Cog):
 
         embed = discord.Embed(
             title=title,
-            url=f"https://trackntrace.easymail.gr/{id}",
+            url=f"{self.main_url}{id}",
             color=self.colour
         )
 
@@ -99,10 +103,12 @@ class EasyMail(commands.Cog):
         embed.add_field(name="Description", value=status['description'], inline=True)
         embed.add_field(name="Date", value=status['date'], inline=False)
 
+        embed.set_thumbnail(url=self.logo)
+
         await ctx.send(embed=embed)
 
     async def get_last_status(self, id) -> tuple:
-        html = get(f"https://trackntrace.easymail.gr/{id}").text
+        html = get(f"{self.tracking_url}{id}").text
 
         soup = bs(html, features="html.parser")
         if soup.find("div", {"class": "cus-alert"}):
@@ -178,13 +184,14 @@ class EasyMail(commands.Cog):
                 if result:
                     embed = discord.Embed(
                         title=entry['description'],
-                        url=f"https://trackntrace.easymail.gr/{entry['id']}",
+                        url=f"{self.main_url}{entry['id']}",
                         color=self.colour
                     )
                     embed.add_field(name="Location", value=new['location'], inline=True)
                     embed.add_field(name="Description", value=new['description'], inline=True)
                     embed.add_field(name="Date", value=f"{new['date']}", inline=False)
 
+                    embed.set_thumbnail(url=self.logo)
                     channel = self.bot.get_channel(updates_channel)
                     await channel.send(embed=embed)
 

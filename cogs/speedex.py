@@ -10,6 +10,9 @@ class Speedex(commands.Cog):
         self.bot = bot
         self.update_ids.start()
         self.colour = 0x01B23B
+        self.tracking_url = "http://www.speedex.gr/speedex/NewTrackAndTrace.aspx?number="
+        self.main_url = "http://www.speedex.gr/isapohi.asp?voucher_code="
+        self.logo = "https://i.imgur.com/Rt380x2.png"
 
     @commands.group(name="speedex", invoke_without_command=True)
     async def speedex(self, ctx: commands.Context):
@@ -24,7 +27,8 @@ class Speedex(commands.Cog):
         embed.add_field(name="?/speedex edit <id> <new description>", value = "Replaces the old description with the new.", inline=False)
         embed.add_field(name="?/speedex remove <id>", value="Removed the id from the list.", inline=False)
 
-        embed.set_footer(text=f"speedex help requested by: {ctx.author.display_name}")
+        embed.set_thumbnail(url=self.logo)
+        embed.set_footer(text=f"Speedex help requested by: {ctx.author.display_name}")
         await ctx.send(embed=embed)
 
     @speedex.command(name="track")
@@ -90,7 +94,7 @@ class Speedex(commands.Cog):
 
         embed = discord.Embed(
             title=title,
-            url=f"http://www.speedex.gr/isapohi.asp?voucher_code={id}&searcggo=Submit",
+            url=f"{self.main_url}{id}",
             color=self.colour
         )
 
@@ -98,10 +102,11 @@ class Speedex(commands.Cog):
         embed.add_field(name="Description", value=status['description'], inline=True)
         embed.add_field(name="Date", value=status['date'], inline=False)
 
+        embed.set_thumbnail(url=self.logo)
         await ctx.send(embed=embed)
 
     async def get_last_status(self, id) -> tuple:
-        response = get(f"http://www.speedex.gr/speedex/NewTrackAndTrace.aspx?number={id}")
+        response = get(f"{self.tracking_url}{id}")
         if response.status_code == 400:
             return (1, None)
 
@@ -194,13 +199,14 @@ class Speedex(commands.Cog):
                 if result:
                     embed = discord.Embed(
                         title=entry['description'],
-                        url=f"http://www.speedex.gr/isapohi.asp?voucher_code={entry['id']}&searcggo=Submit",
+                        url=f"{self.main_url}{entry['id']}",
                         color=self.colour
                     )
                     embed.add_field(name="Location", value=new['location'], inline=True)
                     embed.add_field(name="Description", value=new['description'], inline=True)
                     embed.add_field(name="Date", value=f"{new['date']}", inline=False)
 
+                    embed.set_thumbnail(url=self.logo)
                     channel = self.bot.get_channel(updates_channel)
                     await channel.send(embed=embed)
 
