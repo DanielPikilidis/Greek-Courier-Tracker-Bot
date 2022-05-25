@@ -113,10 +113,10 @@ class Speedex(commands.Cog):
         soup = bs(response.text, features="html.parser")
         timeline_section = soup.find("section", {"id": "timeline"})
 
-        if timeline_section.text.find("Δεν βρέθηκαν αποτελέσματα.") != -1:
+        if timeline_section.text.find("Δεν βρέθηκαν αποτελέσματα.") != None:
             return (1, None)
 
-        if timeline_section.text.find("Η ΑΠΟΣΤΟΛΗ ΠΑΡΑΔΟΘΗΚΕ") != -1:
+        if timeline_section.text.find("Η ΑΠΟΣΤΟΛΗ ΠΑΡΑΔΟΘΗΚΕ") != None:
             status = timeline_section.find("div", {"class": "card-header delivered-speedex"})
             description = "Η Αποστολή Παραδόθηκε"
             other = status.find("span", {"class": "font-small-3"}).contents[0].split(", ")

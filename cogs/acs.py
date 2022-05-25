@@ -153,7 +153,7 @@ class Acs(commands.Cog, name="ACS"):
             "date": date,
             "description": details[2].text.capitalize(),
             "location": details[0].text.capitalize(),
-            "delivered": tbody1.find("tr", {"class": "delivered"}) != 0
+            "delivered": tbody1.find("tr", {"class": "delivered"}) != None
         })
 
 
