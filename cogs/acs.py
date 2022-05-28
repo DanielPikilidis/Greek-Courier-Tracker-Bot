@@ -2,15 +2,8 @@ import discord
 from discord.ext import commands, tasks
 from json import dump
 from os.path import relpath
-from selenium import webdriver
-from selenium.webdriver.firefox import options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.firefox.service import Service
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
-from webdriver_manager.firefox import GeckoDriverManager
 from bs4 import BeautifulSoup as bs
+from pyppeteer import launch
 from datetime import datetime
 
 
@@ -22,7 +15,16 @@ class Acs(commands.Cog, name="ACS"):
         self.tracking_url = "https://www.acscourier.net/el/web/greece/track-and-trace?action=getTracking3&generalCode="
         self.main_url = "https://www.acscourier.net/el/web/greece/track-and-trace?action=getTracking3&generalCode="
         self.logo = "https://i.imgur.com/Yk1WIrQ.jpg"
-        self.driver = setup_selenium()
+        self.browser = self.page = None
+
+    async def _init_browser(self):
+        self.browser = await launch(executablePath='/usr/bin/google-chrome-stable', headless=True, args=[
+            '--disable-gpu',
+            '--no-sandbox',
+            '--disable-extensions'
+        ])
+        self.page = await self.browser.newPage()
+        await self.page.goto(self.tracking_url + "0")    # First search is always much slower
 
     @commands.group(name="acs", invoke_without_command=True)
     async def acs(self, ctx: commands.Context):
@@ -117,17 +119,14 @@ class Acs(commands.Cog, name="ACS"):
 
     async def get_last_status(self, id) -> tuple:
         url = f"{self.tracking_url}{id}"
-        self.driver.get(url)
+        await self.page.goto(url)
 
-        try:
-            WebDriverWait(self.driver, 5).until(EC.visibility_of_element_located((By.TAG_NAME, 'app-parcels-search-results')))
-        except TimeoutException:
-            try:    # Trying 1 more time before giving up.
-                WebDriverWait(self.driver, 8).until(EC.visibility_of_element_located((By.TAG_NAME, 'app-parcels-search-results')))
-            except TimeoutException:
-                return (1, None)
+        await self.page.waitForSelector('#app-root > app-parcels-search > div > app-parcels-search-results', {
+            'visible': True,
+        })
 
-        soup = bs(self.driver.page_source, features="html.parser")
+        content = await self.page.content()
+        soup = bs(content, "html.parser")
         tables = soup.find_all("tbody")
         tbody1 = tables[-2]
         tbody2 = tables[-1]
@@ -191,6 +190,9 @@ class Acs(commands.Cog, name="ACS"):
     async def check_if_changed(self, guild, entry, old_status) -> tuple:
         (result, new) = await self.get_last_status(entry['id'])
 
+        if result == 1:
+            return (False, None)
+
         if new['date'] != old_status['date']:
             entry['status'] = new
             if new['delivered']:
@@ -228,14 +230,6 @@ class Acs(commands.Cog, name="ACS"):
 
                     if new['delivered']:
                         await channel.send(f"Removed {entry['id']} ({entry['description']}) from the list")
-                        
-
-def setup_selenium() -> webdriver:
-    Options = options.Options()
-    Options.headless = True
-
-    driver = webdriver.Firefox(options=Options, service=Service(GeckoDriverManager().install()))
-    return driver
 
 
 def setup(bot: commands.Bot):

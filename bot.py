@@ -22,6 +22,9 @@ class Main(commands.Cog):
                 if filename.endswith(".py"):
                     try:
                         self.bot.load_extension(f"cogs.{filename[:-3]}")
+                        if filename[:-3] == "acs":
+                            acs = self.bot.get_cog('ACS')
+                            await acs._init_browser()
                         self.bot.logger.info(f"Loaded cog: {filename[:-3]}")
                     except:
                         self.bot.logger.warning(f"Failed to load cog: {filename[:-3]}")
