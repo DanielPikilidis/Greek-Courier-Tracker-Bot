@@ -1,9 +1,5 @@
 FROM python:3.10
 
-ADD cogs/* cogs/
-ADD bot.py .
-ADD requirements.txt .
-
 RUN apt-get update && apt-get install -y \
     apt-transport-https \
     ca-certificates \
@@ -20,7 +16,11 @@ RUN apt-get update && apt-get install -y \
 RUN groupadd chrome && useradd -g chrome -s /bin/bash -G audio,video chrome \
     && mkdir -p /home/chrome && chown -R chrome:chrome /home/chrome
 
+ADD requirements.txt .
 RUN python3 -m pip install --upgrade pip
 RUN pip install -r requirements.txt
+
+ADD cogs/* cogs/
+ADD bot.py .
 
 CMD ["python3", "bot.py"]

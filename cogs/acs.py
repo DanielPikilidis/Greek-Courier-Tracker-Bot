@@ -1,4 +1,4 @@
-import discord
+import discord, asyncio
 from discord.ext import commands, tasks
 from json import dump
 from os.path import relpath
@@ -23,8 +23,15 @@ class Acs(commands.Cog, name="ACS"):
             '--no-sandbox',
             '--disable-extensions'
         ])
-        self.page = await self.browser.newPage()
-        await self.page.goto(self.tracking_url + "0")    # First search is always much slower
+        [self.page] = await self.browser.pages()
+        await self.page.goto("https://www.acscourier.net/el/myacs/anafores-apostolwn/anazitisi-apostolwn/")
+        await asyncio.sleep(3)
+
+        # Removes the big fuck off box at the bottom because it hides a big part of the screen and
+        # pyppeteer can't see the search box
+        await self.page.click("#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll")
+        # Why allow cookies? Because if I press "Deny" or even "Allow Selected" then later when I track
+        # ids it will hang (loads and crashes after a while). So I guess I'm forced to accept them ¯\_(ツ)_/¯
 
     @commands.group(name="acs", invoke_without_command=True)
     async def acs(self, ctx: commands.Context):
@@ -118,12 +125,14 @@ class Acs(commands.Cog, name="ACS"):
         await ctx.send(embed=embed)
 
     async def get_last_status(self, id) -> tuple:
-        url = f"{self.tracking_url}{id}"
-        await self.page.goto(url)
+        await self.page.click(".mat-form-field-flex")   # Selects input box
+        await self.page.keyboard.type(id)   # Types the id in it
+        await self.page.click(".d-sm-inline-block") # Clicks the search button
 
-        await self.page.waitForSelector('#app-root > app-parcels-search > div > app-parcels-search-results', {
-            'visible': True,
-        })
+        await self.page.waitForSelector(
+            selector='#app-root > app-parcels-search > div > app-parcels-search-results', 
+            visible=True,
+        ) # Waits for the results to appear
 
         content = await self.page.content()
         soup = bs(content, "html.parser")
@@ -142,11 +151,9 @@ class Acs(commands.Cog, name="ACS"):
         dt = details[1].text
         dt = dt.replace('μ.μ.', 'PM')
         dt = dt.replace('π.μ.', 'AM')
+        date = datetime.strptime(dt, ' %d/%m/%y, %I:%M %p ').strftime('%d/%m/%Y, %H:%M')
 
-        try:
-            date = datetime.strptime(dt, ' %d/%m/%y, %I:%M %p ').strftime('%d/%m/%Y, %H:%M')
-        except ValueError:  # No idea what happens here
-            date = "\u200b"
+        await self.page.click(".mat-focus-indicator")   # Clears input box and search results
 
         return (0, {
             "date": date,
