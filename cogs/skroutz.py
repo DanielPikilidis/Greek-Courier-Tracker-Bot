@@ -3,6 +3,7 @@ from discord.ext import commands, tasks
 from requests import get
 from json import dump
 from os.path import relpath
+from dateutil import parser, tz
 
 class Skroutz(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -111,34 +112,17 @@ class Skroutz(commands.Cog):
             return (1, None)
 
         package = response.json()
-        delivered = (package["deliveredAt"] != None)
 
-        if not len(package["trackingDetails"]):
-            date = package["createdAt"]
-            date = f"{date[8:10]}-{date[5:7]}-{date[0:4]}, {date[11:19]}"
-            return (0, {
-                "date": date,
-                "description": package["status"],
-                "location": "\u200b",
-                "delivered": delivered
-            })
-        else:
-            last_status = package["trackingDetails"][-1]
-            date = last_status["createdAt"]
-            date = f"{date[8:10]}-{date[5:7]}-{date[0:4]}, {date[11:19]}"
+        status = package['statusTextGr']
+        # Getting the date object and changing timezone
+        date = parser.isoparse(package['updatedAt']).astimezone(tz=tz.gettz('Europe/Athens'))
 
-            try:
-                location = last_status["driver"]["city"].capitalize()
-            except KeyError:
-                location = "\u200b"
-            
-            return (0, {
-                "date": date, 
-                "description": last_status["description"], 
-                "location": location,
-                "delivered": delivered
-            })
-
+        return (0, {
+            "date": date.strftime("%d-%m-%Y, %H:%M"),
+            "description": status,
+            "location": "\u200b",   # Skroutz doesn't show the current location.
+            "delivered": package['deliveredAt'] != None
+        })
 
     async def store_id(self, ctx: commands.Context, id, description):
         (result, status) = await self.get_last_status(id)
