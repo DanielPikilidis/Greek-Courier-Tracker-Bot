@@ -84,7 +84,7 @@ class IKEA(commands.Cog):
         (result, status) = await self.get_last_status(id)
         if result == 1:
             if not silent:
-                await ctx.send(f"package ({id}) not found")
+                await ctx.send(f"Package ({id}) not found")
             return
 
         if description:
@@ -137,11 +137,11 @@ class IKEA(commands.Cog):
     async def store_id(self, ctx: commands.Context, id, description):
         (result, status) = await self.get_last_status(id)
         if result == 1:
-            await ctx.send(f"package ({id}) not found")
+            await ctx.send(f"Package ({id}) not found")
             return
 
         if status["delivered"]:
-            await ctx.send("package already delivered")
+            await ctx.send("Package already delivered")
             await self.send_status(ctx, id, False)
             return
         
@@ -151,7 +151,7 @@ class IKEA(commands.Cog):
             with open(relpath("data/guild_data.json"), "w") as file:
                 dump(self.bot.guild_data, file, indent=4)
         else:
-            await ctx.send("package already in list.\nIf you want to change its description use ?/ikea edit")
+            await ctx.send("Package already in list.\nIf you want to change its description use ?/ikea edit")
 
     async def remove_id(self, ctx: commands.Context, id):
         package = next((i for i in self.bot.guild_data[str(ctx.guild.id)]['ikea'] if i['id'] == id), None)
@@ -163,7 +163,7 @@ class IKEA(commands.Cog):
             with open(relpath("data/guild_data.json"), "w") as file:
                 dump(self.bot.guild_data, file, indent=4)
         else:
-            await ctx.send(f"package {id} is not in the list.")
+            await ctx.send(f"Package {id} is not in the list.")
 
     async def check_if_changed(self, guild, entry, old_status) -> tuple:
         (result, new) = await self.get_last_status(entry['id'])
