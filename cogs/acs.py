@@ -30,7 +30,7 @@ class Acs(commands.Cog, name="ACS"):
             waitUntil=["domcontentloaded", "networkidle0"]
         )
 
-        await asyncio.wait(1)
+        await asyncio.sleep(1)
         # Removes the big fuck off box at the bottom because it hides a big part of the screen and
         # pyppeteer can't see the search box
         await self.page.click("#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll")
