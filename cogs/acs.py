@@ -11,11 +11,12 @@ class Acs(commands.Cog, name="ACS"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.update_ids.start()
+        self.reload_page.start()
         self.colour = 0xE42229
         self.tracking_url = "https://www.acscourier.net/el/web/greece/track-and-trace?action=getTracking3&generalCode="
         self.main_url = "https://www.acscourier.net/el/web/greece/track-and-trace?action=getTracking3&generalCode="
         self.logo = "https://i.imgur.com/Yk1WIrQ.jpg"
-        self.browser = self.page = None
+        self.tracking = False        
 
     async def _init_browser(self):
         self.browser = await launch(executablePath='/usr/bin/google-chrome-stable', headless=True, args=[
@@ -24,9 +25,12 @@ class Acs(commands.Cog, name="ACS"):
             '--disable-extensions'
         ])
         [self.page] = await self.browser.pages()
-        await self.page.goto("https://www.acscourier.net/el/myacs/anafores-apostolwn/anazitisi-apostolwn/")
-        await asyncio.sleep(3)
+        await self.page.goto(
+            "https://www.acscourier.net/el/myacs/anafores-apostolwn/anazitisi-apostolwn/",
+            waitUntil=["domcontentloaded", "networkidle0"]
+        )
 
+        await asyncio.wait(1)
         # Removes the big fuck off box at the bottom because it hides a big part of the screen and
         # pyppeteer can't see the search box
         await self.page.click("#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll")
@@ -54,6 +58,7 @@ class Acs(commands.Cog, name="ACS"):
     async def track(self, ctx: commands.Context, *, args):
         for id in args.split():
             await self.send_status(ctx, id, False)
+            await asyncio.sleep(1)
 
     @acs.command(name="add")
     async def add(self, ctx: commands.Context, *, args):
@@ -125,18 +130,22 @@ class Acs(commands.Cog, name="ACS"):
         await ctx.send(embed=embed)
 
     async def get_last_status(self, id) -> tuple:
+        self.tracking = True
         await self.page.click(".mat-form-field-flex")   # Selects input box
-        await self.page.keyboard.type(id)   # Types the id in it
+        await asyncio.sleep(0.01)   # For some reason these delays help with stability
+        await self.page.keyboard.type(id)   # Types the id in it    
+        await asyncio.sleep(0.01)
         await self.page.click(".d-sm-inline-block") # Clicks the search button
 
         await self.page.waitForSelector(
-            selector='#app-root > app-parcels-search > div > app-parcels-search-results', 
-            visible=True,
+            selector="#app-root > app-parcels-search > div > app-parcels-search-results", 
+            visible=True
         ) # Waits for the results to appear
 
         content = await self.page.content()
         soup = bs(content, "html.parser")
         tables = soup.find_all("tbody")
+
         tbody1 = tables[-2]
         tbody2 = tables[-1]
 
@@ -155,6 +164,7 @@ class Acs(commands.Cog, name="ACS"):
 
         await self.page.click(".mat-focus-indicator")   # Clears input box and search results
 
+        self.tracking = False
         return (0, {
             "date": date,
             "description": details[2].text.capitalize(),
@@ -237,7 +247,23 @@ class Acs(commands.Cog, name="ACS"):
 
                     if new['delivered']:
                         await channel.send(f"Removed {entry['id']} ({entry['description']}) from the list")
+                
+                await asyncio.sleep(1)
 
+    @update_ids.before_loop
+    async def before_update_ids(self):
+        await asyncio.wait(10)
+
+    @tasks.loop(minutes=5.0)
+    async def reload_page(self):
+        while self.tracking:
+            await asyncio.sleep(1)
+        
+        await self.page.reload()
+
+    @reload_page.before_loop
+    async def before_reload_page(self):
+        await asyncio.sleep(60)
 
 def setup(bot: commands.Bot):
     bot.add_cog(Acs(bot))

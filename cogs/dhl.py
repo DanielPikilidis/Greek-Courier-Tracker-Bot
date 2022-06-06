@@ -1,4 +1,4 @@
-import discord
+import discord, asyncio
 from discord.ext import commands, tasks
 from requests import get
 from json import dump, loads
@@ -37,6 +37,7 @@ class Dhl(commands.Cog, name="DHL"):
     async def track(self, ctx: commands.Context, *, args):
         for id in args.split():
             await self.send_status(ctx, id, False)
+            await asyncio.sleep(1)
 
     @dhl.command(name="add")
     async def add(self, ctx: commands.Context, *, args):
@@ -203,6 +204,8 @@ class Dhl(commands.Cog, name="DHL"):
 
                     if new['delivered']:
                         await channel.send(f"Removed {entry['id']} ({entry['description']}) from the list")
+
+                await asyncio.sleep(1)
                         
 
 def setup(bot: commands.Bot):

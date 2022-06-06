@@ -1,4 +1,4 @@
-import discord
+import discord, asyncio
 from bs4 import BeautifulSoup as bs
 from discord.ext import commands, tasks
 from requests import get
@@ -28,13 +28,14 @@ class Speedex(commands.Cog):
         embed.add_field(name="?/speedex remove <id>", value="Removed the id from the list.", inline=False)
 
         embed.set_thumbnail(url=self.logo)
-        embed.set_footer(text=f"Speedex help requested by: {ctx.author.display_name}")
+        embed.set_footer(text=f"speedex help requested by: {ctx.author.display_name}")
         await ctx.send(embed=embed)
 
     @speedex.command(name="track")
     async def track(self, ctx: commands.Context, *, args):
         for id in args.split():
             await self.send_status(ctx, id, False)
+            await asyncio.sleep(1)
 
     @speedex.command(name="add")
     async def add(self, ctx: commands.Context, *, args):
@@ -113,10 +114,10 @@ class Speedex(commands.Cog):
         soup = bs(response.text, features="html.parser")
         timeline_section = soup.find("section", {"id": "timeline"})
 
-        if timeline_section.text.find("Δεν βρέθηκαν αποτελέσματα.") != None:
+        if timeline_section.text.find("Δεν βρέθηκαν αποτελέσματα.") != -1:
             return (1, None)
 
-        if timeline_section.text.find("Η ΑΠΟΣΤΟΛΗ ΠΑΡΑΔΟΘΗΚΕ") != None:
+        if timeline_section.text.find("Η ΑΠΟΣΤΟΛΗ ΠΑΡΑΔΟΘΗΚΕ") != -1:
             status = timeline_section.find("div", {"class": "card-header delivered-speedex"})
             description = "Η Αποστολή Παραδόθηκε"
             other = status.find("span", {"class": "font-small-3"}).contents[0].split(", ")
@@ -212,6 +213,8 @@ class Speedex(commands.Cog):
 
                     if new['delivered']:
                         await channel.send(f"Removed {entry['id']} ({entry['description']}) from the list")
+
+                await asyncio.sleep(1)
 
 
 def setup(bot: commands.Bot):

@@ -1,4 +1,4 @@
-import discord
+import discord, asyncio
 from discord.ext import commands, tasks
 from requests import get
 from json import dump
@@ -36,6 +36,7 @@ class Skroutz(commands.Cog):
     async def track(self, ctx: commands.Context, *, args):
         for id in args.split():
             await self.send_status(ctx, id, False)
+            await asyncio.sleep(1)
 
     @skroutz.command(name="add")
     async def add(self, ctx: commands.Context, *, args):
@@ -196,6 +197,8 @@ class Skroutz(commands.Cog):
 
                     if new['delivered']:
                         await channel.send(f"Removed {entry['id']} ({entry['description']}) from the list")
+
+                await asyncio.sleep(1)
 
 
 def setup(bot: commands.Bot):

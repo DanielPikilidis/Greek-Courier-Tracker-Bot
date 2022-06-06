@@ -1,4 +1,4 @@
-import discord
+import discord, asyncio
 from discord.ext import commands, tasks
 from requests import post
 from json import dump, loads
@@ -34,6 +34,7 @@ class Elta(commands.Cog, name="ELTA"):
     async def track(self, ctx: commands.Context, *, args):
         for id in args.split():
             await self.send_status(ctx, id, False)
+            await asyncio.sleep(1)
 
     @elta.command(name="add")
     async def add(self, ctx: commands.Context, *, args):
@@ -200,6 +201,8 @@ class Elta(commands.Cog, name="ELTA"):
 
                     if new['delivered']:
                         await channel.send(f"Removed {entry['id']} ({entry['description']}) from the list")
+
+                await asyncio.sleep(1)
 
 
 def setup(bot: commands.Bot):
