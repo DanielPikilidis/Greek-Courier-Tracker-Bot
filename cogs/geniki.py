@@ -120,7 +120,7 @@ class Geniki(commands.Cog):
 
         date = last_status.find("div", {"class": "checkpoint-date"}).contents[-1]
         time = last_status.find("div", {"class": "checkpoint-time"}).contents[-1]
-        delivered = last_status.find("div", {"class": "tracking-location"}) == None
+        delivered = last_status.find("div", {"class": "checkpoint-location"}) == None
         if delivered:
             location = updates[-2].find("div", {"class": "checkpoint-location"}).contents[-1].title()
         else:
