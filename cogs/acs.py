@@ -2,41 +2,41 @@ import discord, asyncio
 from discord.ext import commands, tasks
 from json import dump
 from os.path import relpath
-from bs4 import BeautifulSoup as bs
 from pyppeteer import launch
-from datetime import datetime
+from dateutil import parser, tz
 
 
 class Acs(commands.Cog, name="ACS"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.update_ids.start()
-        self.reload_page.start()
         self.colour = 0xE42229
         self.tracking_url = "https://www.acscourier.net/el/web/greece/track-and-trace?action=getTracking3&generalCode="
         self.main_url = "https://www.acscourier.net/el/web/greece/track-and-trace?action=getTracking3&generalCode="
         self.logo = "https://i.imgur.com/Yk1WIrQ.jpg"
-        self.tracking = False        
+        self.tracking = [False, False]  # This is very ugly but I can't be bothered to improve it
+        self.response_json = [None, None]
+        self.processed_flag = [asyncio.Event(), asyncio.Event()]
+        self.started = False
+          
 
-    async def _init_browser(self):
+    async def init_browser(self):
         self.browser = await launch(executablePath='/usr/bin/google-chrome-stable', headless=True, args=[
             '--disable-gpu',
             '--no-sandbox',
             '--disable-extensions'
         ])
-        [self.page] = await self.browser.pages()
-        await self.page.goto(
-            "https://www.acscourier.net/el/myacs/anafores-apostolwn/anazitisi-apostolwn/",
-            waitUntil=["domcontentloaded", "networkidle0"]
-        )
+        
+        await self.browser.newPage()
+        self.pages = await self.browser.pages()
 
-        await asyncio.sleep(1)
-        # Removes the big fuck off box at the bottom because it hides a big part of the screen and
-        # pyppeteer can't see the search box
-        await self.page.click("#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll")
-        # Why allow cookies? Because if I press "Deny" or even "Allow Selected" then later when I track
-        # ids it will hang (loads and crashes after a while). So I guess I'm forced to accept them ¯\_(ツ)_/¯
+        for page in self.pages:
+            await self.setup_page(page)
 
+        if not self.started:
+            self.reload_pages.start()
+            self.update_ids.start()
+            self.started = True
+        
     @commands.group(name="acs", invoke_without_command=True)
     async def acs(self, ctx: commands.Context):
         embed = discord.Embed(
@@ -58,7 +58,6 @@ class Acs(commands.Cog, name="ACS"):
     async def track(self, ctx: commands.Context, *, args):
         for id in args.split():
             await self.send_status(ctx, id, False)
-            await asyncio.sleep(1)
 
     @acs.command(name="add")
     async def add(self, ctx: commands.Context, *, args):
@@ -130,47 +129,53 @@ class Acs(commands.Cog, name="ACS"):
         await ctx.send(embed=embed)
 
     async def get_last_status(self, id) -> tuple:
-        self.tracking = True
-        await self.page.click(".mat-form-field-flex")   # Selects input box
-        await asyncio.sleep(0.01)   # For some reason these delays help with stability
-        await self.page.keyboard.type(id)   # Types the id in it    
-        await asyncio.sleep(0.01)
-        await self.page.click(".d-sm-inline-block") # Clicks the search button
-
-        await self.page.waitForSelector(
-            selector="#app-root > app-parcels-search > div > app-parcels-search-results", 
-            visible=True
-        ) # Waits for the results to appear
-
-        content = await self.page.content()
-        soup = bs(content, "html.parser")
-        tables = soup.find_all("tbody")
-
-        tbody1 = tables[-2]
-        tbody2 = tables[-1]
-
-        status_list = tbody2.find_all("tr")
-
-        if len(status_list) == 0:   # Invalid id
+        using = 1 if self.tracking[0] else 0
+        page = self.pages[using]
+        self.tracking[using] = True
+        
+        async def process_response(res, id):
+            nonlocal using
+            if res.url == f"https://api.acscourier.net/api/parcels/search/{id}":
+                try:
+                    self.response_json[using] = await asyncio.gather(res.json())
+                    self.processed_flag[using].set()
+                except:
+                    pass
+        
+        await page.click(".mat-form-field-flex")   # Selects input box
+        await page.keyboard.sendCharacter(id)   # Types the id in it
+        await page.click(".d-sm-inline-block") # Clicks the search button
+        
+        page.on('response', lambda res: asyncio.ensure_future(process_response(res, id)))
+        
+        await self.processed_flag[using].wait()
+        self.processed_flag[using].clear()
+        
+        await page.click(".mat-focus-indicator")   # Clears input box and search results        
+        self.tracking[using] = False
+        
+        package = self.response_json[using][0]["items"][0]
+        if package["notes"] == "Η αποστολή δεν βρέθηκε":
             return (1, None)
+            
+        delivered = package["isDelivered"]
 
-        last = status_list[-1]
-
-        details = last.find_all("td")
-        dt = details[1].text
-        dt = dt.replace('μ.μ.', 'PM')
-        dt = dt.replace('π.μ.', 'AM')
-        date = datetime.strptime(dt, ' %d/%m/%y, %I:%M %p ').strftime('%d/%m/%Y, %H:%M')
-
-        await self.page.click(".mat-focus-indicator")   # Clears input box and search results
-
-        self.tracking = False
-        return (0, {
-            "date": date,
-            "description": details[2].text.capitalize(),
-            "location": details[0].text.capitalize(),
-            "delivered": tbody1.find("tr", {"class": "delivered"}) != None
-        })
+        if len(package["statusHistory"]) == 0:
+            return (0, {
+                "date": "\u200b", 
+                "description": "Προς Παραλαβη", 
+                "location": "\u200b",
+                "delivered": delivered
+            })
+        else:
+            last_status = package["statusHistory"][-1]
+            date = parser.isoparse(last_status["controlPointDate"]).astimezone(tz=tz.gettz('Europe/Athens'))
+            return (0, {
+                "date": date.strftime("%d-%m-%Y, %H:%M"), 
+                "description": last_status["description"].capitalize(), 
+                "location": last_status["controlPoint"].capitalize(), 
+                "delivered": delivered
+            })
 
 
     async def store_id(self, ctx: commands.Context, id, description):
@@ -223,13 +228,25 @@ class Acs(commands.Cog, name="ACS"):
             return (True, new)
         return (False, None)
 
-    @tasks.loop(minutes=5.0)
+    async def setup_page(self, page):
+        await page.goto(
+            "https://www.acscourier.net/el/myacs/anafores-apostolwn/anazitisi-apostolwn/",
+            waitUntil=["domcontentloaded", "networkidle0"]
+        )
+        try:
+            await page.click("#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll")
+        except:
+            pass
+
+    @tasks.loop(minutes=2.0)
     async def update_ids(self):
         for guild in self.bot.guild_data:
             updates_channel = int(self.bot.guild_data[guild]['updates_channel'])
             if updates_channel == 0:
                 continue
             for entry in self.bot.guild_data[guild]['acs']:
+                while self.tracking[0] == self.tracking[1] == True:
+                    await asyncio.sleep(1)
                 (result, new) = await self.check_if_changed(guild, entry, entry['status'])
                 if result:
                     embed = discord.Embed(
@@ -247,23 +264,28 @@ class Acs(commands.Cog, name="ACS"):
 
                     if new['delivered']:
                         await channel.send(f"Removed {entry['id']} ({entry['description']}) from the list")
-                
-                await asyncio.sleep(1)
 
     @update_ids.before_loop
     async def before_update_ids(self):
-        await asyncio.wait(10)
-
+        await asyncio.sleep(5)
+    
     @tasks.loop(minutes=5.0)
-    async def reload_page(self):
-        while self.tracking:
-            await asyncio.sleep(1)
-        
-        await self.page.reload()
-
-    @reload_page.before_loop
-    async def before_reload_page(self):
-        await asyncio.sleep(60)
+    async def reload_pages(self):
+        reloaded = [False, False]
+        for i in range(len(self.pages)):
+            if not self.tracking[i] and not reloaded[i]:
+                self.tracking[i] = True
+                await self.pages[i].close()
+                self.pages[i] = await self.browser.newPage()
+                await self.setup_page(self.pages[i])
+                reloaded[i] = True
+                self.tracking[i] = False
+            else:
+                await asyncio.sleep(1)
+                
+            if reloaded[0] == reloaded[1] == True:
+                break
+            
 
 def setup(bot: commands.Bot):
     bot.add_cog(Acs(bot))
