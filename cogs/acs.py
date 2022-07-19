@@ -229,10 +229,17 @@ class Acs(commands.Cog, name="ACS"):
         return (False, None)
 
     async def setup_page(self, page):
-        await page.goto(
-            "https://www.acscourier.net/el/myacs/anafores-apostolwn/anazitisi-apostolwn/",
-            waitUntil=["domcontentloaded", "networkidle0"]
-        )
+        while True:
+            try:
+                await page.goto(
+                    "https://www.acscourier.net/el/myacs/anafores-apostolwn/anazitisi-apostolwn/",
+                    waitUntil=["domcontentloaded", "networkidle0"]
+                )
+                break
+            except Exception as e:
+                self.bot.logger.error(f"Error while setting up tab: {e}")
+                await asyncio.sleep(30)
+            
         try:
             await page.click("#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll")
         except:
