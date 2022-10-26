@@ -153,6 +153,12 @@ class Speedex(commands.Cog):
             return
         
         if not next((i for i in self.bot.guild_data[str(ctx.guild.id)]['speedex'] if i['id'] == id), None):
+            if self.bot.guild_data[str(ctx.guild.id)]['updates_channel'] == 0:
+                updates_channel = str(ctx.channel.id)
+                self.bot.guild_data[str(ctx.guild.id)]['updates_channel'] = updates_channel
+                with open(relpath("data/guild_data.json"), "w") as file:
+                    dump(self.bot.guild_data, file, indent=4)
+                await ctx.send("Channel for updates has not been set. Using this one for now. You can change it with ?/updates.")
             self.bot.guild_data[str(ctx.guild.id)]['speedex'].append({"id": id, "description": description, "status": status})
             await ctx.send(f"Added {id} ({description}) to the list.")
 

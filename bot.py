@@ -105,7 +105,7 @@ class Main(commands.Cog):
     @updates.error
     async def updates_error(self, ctx, error):
         if isinstance(error, commands.MissingRequiredArgument):
-            await ctx.send("Missing channel arguments.")
+            await ctx.send("Missing channel argument.")
 
     @commands.command(name="track")
     async def track(self, ctx: commands.Context, arg1):
