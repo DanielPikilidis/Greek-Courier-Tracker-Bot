@@ -20,13 +20,15 @@ class Acs(commands.Cog, name="ACS"):
           
 
     async def init_browser(self):
-        self.browser = await launch(executablePath='/usr/bin/google-chrome-stable', headless=True, args=[
-            '--disable-gpu',
-            '--no-sandbox',
-            '--disable-extensions'
-        ])
+        self.browser = await launch(executablePath='/usr/bin/google-chrome-stable', 
+            headless=True,
+            args=[
+                '--disable-gpu',
+                '--no-sandbox',
+                '--disable-extensions'
+            ])
         
-        await self.browser.newPage()
+        #await self.browser.newPage()
         self.pages = await self.browser.pages()
 
         for page in self.pages:
