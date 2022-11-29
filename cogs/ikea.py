@@ -175,6 +175,9 @@ class IKEA(commands.Cog):
     async def check_if_changed(self, guild, entry, old_status) -> tuple:
         (result, new) = await self.get_last_status(entry['id'])
 
+        if result == 1:
+            return (False, None)
+
         if new['date'] != old_status['date']:
             entry['status'] = new
             if new['delivered']:

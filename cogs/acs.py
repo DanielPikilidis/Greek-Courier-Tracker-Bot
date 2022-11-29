@@ -28,7 +28,7 @@ class Acs(commands.Cog, name="ACS"):
                 '--disable-extensions'
             ])
         
-        #await self.browser.newPage()
+        #await self.browser.newPage()   # If we need another tab we uncomment this line
         self.pages = await self.browser.pages()
 
         for page in self.pages:
@@ -131,7 +131,7 @@ class Acs(commands.Cog, name="ACS"):
         await ctx.send(embed=embed)
 
     async def get_last_status(self, id) -> tuple:
-        using = 1 if self.tracking[0] else 0
+        using = 0 #1 if self.tracking[0] else 0
         page = self.pages[using]
         self.tracking[using] = True
         
