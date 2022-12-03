@@ -26,9 +26,11 @@ class Acs(commands.Cog, name="ACS"):
                 '--disable-gpu',
                 '--no-sandbox',
                 '--disable-extensions'
-            ])
+            ],
+            defaultViewport={"width": 1280, "height": 720}
+            )
         
-        #await self.browser.newPage()   # If we need another tab we uncomment this line
+        await self.browser.newPage()
         self.pages = await self.browser.pages()
 
         for page in self.pages:
@@ -131,8 +133,9 @@ class Acs(commands.Cog, name="ACS"):
         await ctx.send(embed=embed)
 
     async def get_last_status(self, id) -> tuple:
-        using = 0 #1 if self.tracking[0] else 0
+        using = 1 if self.tracking[0] else 0
         page = self.pages[using]
+        await page.bringToFront()
         self.tracking[using] = True
         
         async def process_response(res, id):
@@ -237,6 +240,7 @@ class Acs(commands.Cog, name="ACS"):
         return (False, None)
 
     async def setup_page(self, page):
+        await page.bringToFront()
         while True:
             try:
                 await page.goto(
