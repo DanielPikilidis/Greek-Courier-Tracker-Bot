@@ -1,11 +1,15 @@
-import discord, logging
+import discord, logging, sqlite3
 from discord.ext import commands
 from logging.handlers import TimedRotatingFileHandler
 from os import listdir, makedirs
 from os.path import relpath, exists
 from json import loads, dump
 from sys import stdout
+from os import getenv
+from logging.config import dictConfig
 
+from log_config import LogConfig
+import sqlite3_handler
 
 class Main(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -15,20 +19,14 @@ class Main(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         if not self.started:
-            with open("data/guild_data.json", "r") as file:
-                self.bot.guild_data = loads(file.read())
-
             for filename in listdir("./cogs"):
                 if filename.endswith(".py"):
                     try:
                         self.bot.load_extension(f"cogs.{filename[:-3]}")
-                        if filename[:-3] == "acs":
-                            acs = self.bot.get_cog('ACS')
-                            await acs.init_browser()
                         self.bot.logger.info(f"Loaded cog: {filename[:-3]}")
                     except:
                         self.bot.logger.warning(f"Failed to load cog: {filename[:-3]}")
-            
+
             self.started = True
             self.bot.logger.info(f"Bot logged in and ready. Joined guilds: {len(bot.guilds)}")
 
@@ -37,16 +35,12 @@ class Main(commands.Cog):
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
         self.bot.logger.info(f"Joined guild {guild.id}")
-        self.bot.guild_data[str(guild.id)] = {"updates_channel": 0, "acs": [], "easymail": [], "elta": [], "speedex": [], "geniki": [], "skroutz": [], "dhl": [], "couriercenter": [], "ikea": [], "delatolas": []}
-        with open(relpath("data/guild_data.json"), "w") as file:
-            dump(bot.guild_data, file, indent=4)
+        sqlite3_handler.insert_guild(guild.id)
 
     @commands.Cog.listener()
     async def on_guild_remove(self, guild):
         self.bot.logger.info(f"Left guild {guild.id}")
-        self.bot.guild_data.pop(str(guild.id))
-        with open(relpath("data/guild_data.json"), "w") as file:
-            dump(bot.guild_data, file, indent=4)
+        sqlite3_handler.delete_guild(guild.id)
 
     @commands.command(name="help")
     async def help(self, ctx: commands.Context):
@@ -61,11 +55,6 @@ class Main(commands.Cog):
                 continue
             embed.add_field(name=courier.lower(), value=f"Returns available commands for {courier}", inline=False)
 
-        embed.add_field(
-            name="?/tracking-update",
-            value="Returns the current status for all the parcels in the list. If a parcel arrived, it is removed from that list",
-            inline=False
-        )
 
         if not self.bot.guild_data[str(ctx.guild.id)]["updates_channel"]:
             embed.add_field(
@@ -97,10 +86,8 @@ class Main(commands.Cog):
             await ctx.send("Invalid channel.")
             return
 
-        self.bot.guild_data[str(ctx.guild.id)]['updates_channel'] = str(channel.id)
+        sqlite3_handler.update_channel(ctx.guild.id, str(channel.id))
         await ctx.send("Updates channel changed.")
-        with open(relpath("data/guild_data.json"), "w") as file:
-            dump(bot.guild_data, file, indent=4)
 
     @updates.error
     async def updates_error(self, ctx, error):
@@ -112,82 +99,94 @@ class Main(commands.Cog):
         # This is not a good solution and needs to be changed / improved.
         id = arg1
         if len(id) == 10:
-            couriers = [self.bot.get_cog("ACS"), self.bot.get_cog("DHL"), self.bot.get_cog("Geniki")]
+            couriers = [self.bot.get_cog("ACS"), self.bot.get_cog("Geniki")]
             for courier in couriers:
-                await courier.send_status(ctx, id, True)
+                await courier.__track_id(ctx, id, True)
         elif len(id) == 11:
             courier = self.bot.get_cog("EasyMail")
-            await courier.send_status(ctx, id, True)
+            await courier.__track_id(ctx, id, True)
         elif len(id) == 12:
             couriers = [self.bot.get_cog("Speedex"), self.bot.get_cog("Delatolas"), self.bot.get_cog("IKEA")]
             for courier in couriers:
-                await courier.send_status(ctx, id, True)
+                await courier.__track_id(ctx, id, True)
         elif len(id) == 13:
             couriers = [self.bot.get_cog("ELTA"), self.bot.get_cog("Skroutz")]
             for courier in couriers:
-                await courier.send_status(ctx, id, True)
+                await courier.__track_id(ctx, id, True)
 
     @track.error
     async def track_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.MissingRequiredArgument):
             await ctx.send("Missing tracking id.")
 
-    @commands.command(name="tracking-update")
-    async def tracking_update(self, ctx: commands.Context):
-        guild = self.bot.guild_data[str(ctx.guild.id)]
-        for cog in self.bot.cogs:
-            if cog == "Main":
-                continue
-            courier = self.bot.get_cog(cog)
-            for entry in guild[cog.lower()]:
-                await courier.send_status(ctx, entry['id'], False, entry['description'])
 
+def create_database():
+    conn = sqlite3.connect("/data/data.sqlite3")
+    cur = conn.cursor()
 
-def setup_logger() -> logging.Logger:
-    discord_logger = logging.getLogger('discord')
-    handler = logging.FileHandler(filename="logs/discord.log", encoding="utf-8", mode='w')
-    handler.setFormatter(logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s"))
-    discord_logger.addHandler(handler)
+    query = """
+    ATTACH DATABASE 'data.sqlite3' AS GuildData;
 
-    logger = logging.getLogger("output")
-    logname = "logs/output.log"
-    logger.level = logging.INFO
-    handler = TimedRotatingFileHandler(logname, when="midnight", interval=1, backupCount=1)
-    handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
-    handler.suffix = "%Y%m%d"
+    CREATE TABLE IF NOT EXISTS Packages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tracking_id TEXT,
+        courier_name TEXT,
+        description TEXT,
+        last_location TEXT,
+        guild_id TEXT,
+        FOREIGN KEY (guild_id) REFERENCES Guilds(guild_id)
+    );
 
-    logger.addHandler(handler)
-    logger.addHandler(logging.StreamHandler(stdout))
+    CREATE TABLE IF NOT EXISTS Guilds (
+        guild_id TEXT PRIMARY KEY,
+        updates_channel TEXT
+    );
+    """
+
+    cur.executescript(query)
+    conn.commit()
+    conn.close()
     
-    return logger
+    bot.logger.info("Created database.")
 
-if __name__ == "__main__":
-    prefix = "?/"
-    bot = commands.Bot(command_prefix=prefix, help_command=None)
+def check_database():
+    if not exists("/data/data.sqlite3"):
+        with open("/data/data.sqlite3", "w") as file:
+            pass
+        create_database()
 
-    bot.logger = setup_logger()
-
-    bot.add_cog(Main(bot))
-
-    if not exists("data"):
-        makedirs("data")
-
-    if not exists("data/guild_data.json"):
-        with open("data/guild_data.json", "w") as file:
-            dump({}, file, indent=4)
-
-    if exists("data/config.json"):
-        with open("data/config.json", "r") as file:
-            config = loads(file.read())
-            key = config['keys']['discord']
-        bot.run(key)
-    else:
-        with open("data/config.json", "w") as file:
+def check_config():
+    if not exists("/config/config.json"):
+        with open("/config/config.json", "w") as file:
             config = {
                 "keys": {
                     "discord": "",
-                    "dhl": ""
-                }
+                },
             }
             dump(config, file, indent=4)
-        print("Paste your key in config.txt file in data/")
+        print("Paste your key in config.txt file in config/")
+        exit(1)
+
+bot = None
+
+def main():
+    TRACKER_URL = getenv("TRACKER_URL", "https://courier-api.danielpikilidis.com/")
+    dictConfig(LogConfig().dict())
+
+    global bot
+    bot = commands.Bot(command_prefix="?/", help_command=None)
+
+    bot.logger = logging.getLogger(getenv("LOG_NAME", "courier-tracking-bot"))
+
+    check_database()
+    check_config()
+
+    bot.add_cog(Main(bot))
+
+    with open("/config/config.json", "r") as file:
+        config = loads(file.read())
+        key = config['keys']['discord']
+    bot.run(key)
+
+if __name__ == "__main__":
+    main()

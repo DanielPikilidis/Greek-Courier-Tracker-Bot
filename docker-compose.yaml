@@ -1,0 +1,13 @@
+version: "3.3"
+services:
+  courier_tracking:
+    image: dpikilidis/courier-tracking-bot:latest
+    restart: always
+    volumes:
+      - ./config:/config
+      - ./logs:/logs
+      - ./data:/data
+    environment:
+      - LOG_NAME=courier-tracking-bot
+      - LOG_LEVEL=INFO
+      - TRACKER_URL=https://courier-api.danielpikilidis.com
