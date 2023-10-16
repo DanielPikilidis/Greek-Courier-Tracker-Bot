@@ -137,7 +137,7 @@ class GenikiTracker(commands.Cog, name="Geniki"):
         await ctx.send(f"Package ({id}) added")
 
     async def __remove_id(self, ctx: commands.Context, id: str):
-        sqlite3_handler.delete_package(str(ctx.guild.id), id)
+        sqlite3_handler.delete_package([str(ctx.guild.id)], id)
         await ctx.send(f"Package ({id}) removed")
 
     async def __edit_package(self, ctx: commands.Context, id: str, new_description: str):
@@ -151,15 +151,16 @@ class GenikiTracker(commands.Cog, name="Geniki"):
         old_info = models.Location(**json.loads(result2))
 
         if new_info.last_location.datetime != old_info.datetime:
+            # Get all the guild ids that might have this tracking id (I don't expect this to ever be more than 1 guild id but you never know)
+            guild_ids = sqlite3_handler.get_guild_ids_for_tracking_id(tracking_id)
+
             if new_info.delivered == True:
                 # Remove the package from the database if its delivered
-                sqlite3_handler.delete_package(tracking_id)
+                sqlite3_handler.delete_package(guild_ids, tracking_id)
             else:
                 # Update the last location in the database if it hasn't been delivered
                 sqlite3_handler.update_package_last_location(tracking_id, json.dumps(new_info.last_location.__dict__))
 
-            # Get all the guild ids that might have this tracking id (I don't expect this to ever be more than 1 guild id but you never know)
-            guild_ids = sqlite3_handler.get_guild_ids_for_tracking_id(tracking_id)
             # Get all the channels that want updates for these guild ids
             update_channels = sqlite3_handler.get_update_channels_for_guild_ids(guild_ids)
 

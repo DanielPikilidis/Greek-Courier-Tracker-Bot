@@ -123,16 +123,16 @@ def delete_guild(guild_id: str):
     conn.commit()
     conn.close()
 
-def delete_package(guild_id: str, tracking_id: str):
+def delete_package(guild_ids: List[str], tracking_id: str):
     conn = sqlite3.connect("/data/data.sqlite3")
     cur = conn.cursor()
 
     query = """
         DELETE FROM Packages
-        WHERE tracking_id = ? AND guild_id = ?
-    """
+        WHERE tracking_id = ? AND guild_id IN ({});    
+    """.format(', '.join(['?'] * len(guild_ids)))
 
-    cur.execute(query, (tracking_id, guild_id))
+    cur.execute(query, (tracking_id,) + tuple(guild_ids))
     conn.commit()
     conn.close()
 
