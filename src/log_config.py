@@ -26,7 +26,7 @@ class LogConfig(BaseModel):
         "file": {
             "formatter": "default",
             "class": "logging.handlers.TimedRotatingFileHandler",
-            "filename": f"{LOG_PATH}/{LOGGER_NAME}",
+            "filename": f"{LOG_PATH}/{LOGGER_NAME}.log",
             "when": "midnight",
             "interval": 1,
             "backupCount": 14,
