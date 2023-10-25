@@ -116,7 +116,6 @@ async def update_ids():
             if package.delivered:
                 for guild_id in guild_ids:
                     sqlite3_handler.delete_package(logger, guild_id, id)
-                    bot.get_channel(channel_id[0]).send(f"Removed ({id}) from list")
             else:
                 sqlite3_handler.update_package_last_location(logger, id, json.dumps(last_location.__dict__))
 

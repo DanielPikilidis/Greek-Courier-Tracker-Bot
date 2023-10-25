@@ -161,6 +161,16 @@ def delete_guild(logger: logging.Logger, guild_id: str):
     logger.debug(f"In delete_guild executing query: {query}")
     cur.execute(query, (guild_id,))
     conn.commit()
+
+    query = """
+        DELETE FROM Packages
+        WHERE guild_id = ?
+    """
+
+    logger.debug(f"In delete_guild executing query: {query}")
+    cur.execute(query, (guild_id,))
+    conn.commit()
+
     conn.close()
 
 def delete_package(logger: logging.Logger, guild_id: str, tracking_id: str):
