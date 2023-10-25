@@ -12,6 +12,7 @@ bot = discord.Bot(intents=discord.Intents.all())
 @bot.event
 async def on_ready():
     logger.info("Bot is ready.")
+    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="/help"))
 
 @bot.event
 async def on_guild_join(guild: discord.Guild):
@@ -22,6 +23,52 @@ async def on_guild_join(guild: discord.Guild):
 async def on_guild_remove(guild: discord.Guild):
     logger.info(f"Removed from guild {guild.name} ({guild.id})")
     sqlite3_handler.delete_guild(logger, guild.id)
+
+@bot.command()
+async def help(ctx: discord.ApplicationContext):
+    embed = discord.Embed(
+        title="Help",
+        description="All the available commands.",
+        color=0xFFFFFF,
+    )
+
+    embed.add_field(
+        name="/updates <#channel>",
+        value="Set the channel to send updates to.",
+        inline=False,
+    )
+
+    embed.add_field(
+        name="/track <courier> <id>",
+        value="Track a package.",
+        inline=False,
+    )
+
+    embed.add_field(
+        name="/add <courier> <id> <description>",
+        value="Add a package to track.",
+        inline=False,
+    )
+
+    embed.add_field(
+        name="/remove <id>",
+        value="Remove a package from tracking.",
+        inline=False,
+    )
+
+    embed.add_field(
+        name="/edit <id> <description>",
+        value="Edit the description of a package.",
+        inline=False,
+    )
+
+    embed.add_field(
+        name="/list",
+        value="List all the packages you are tracking.",
+        inline=False,
+    )
+
+    await ctx.respond(embed=embed)
 
 @bot.command()
 async def updates(
