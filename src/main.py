@@ -85,8 +85,8 @@ async def track(
         courier: discord.Option(str, choices=["acs", "couriercenter", "easymail", "skroutz", "elta", "speedex", "geniki"], description="The courier to track."),
         id: discord.Option(str, "The tracking id."),
         ):
-    package = await helpers.retrieve_package_info(courier, id)
-    await helpers.send_status(package, ctx)
+    package = await helpers.retrieve_package_info(logger, courier, id)
+    await helpers.send_status(logger, package, courier_name=courier, ctx=ctx)
 
 @bot.command()
 async def add(
@@ -136,7 +136,7 @@ async def update_ids():
         for id in ids:
             logger.debug(f"Checking id {id} for courier {courier_name}")
             # For each id get the package info
-            package = await helpers.retrieve_package_info(courier_name, id)
+            package = await helpers.retrieve_package_info(logger, courier_name, id)
             if package is None:
                 continue
             
@@ -157,8 +157,8 @@ async def update_ids():
             update_channels = sqlite3_handler.get_update_channels_for_guild_ids(logger, guild_ids)
             
             # Sending the updated status to the update channels
-            for channel_id in update_channels:
-                await helpers.send_status(package, bot=bot, channel_id=channel_id[0])
+            for channel_id, guild_id in zip(update_channels, guild_ids):
+                await helpers.send_status(logger, package, courier_name=courier_name, guild_id=guild_id, bot=bot, channel_id=channel_id[0])
             
             if package.delivered:
                 for guild_id in guild_ids:
