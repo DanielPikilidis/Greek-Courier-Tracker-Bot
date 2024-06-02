@@ -170,6 +170,27 @@ async def list_packages(logger: logging.Logger, ctx: discord.ApplicationContext)
 
     await paginator.respond(ctx.interaction, ephemeral=False)
 
+def check_guilds(logger: logging.Logger, bot: discord.Bot):
+    conn = sqlite3.connect("/data/data.sqlite3")
+
+    cur = conn.cursor()
+
+    cur.execute("SELECT guild_id FROM Guilds")
+    db_guild_ids = [ str(guild_id[0]) for guild_id in cur.fetchall() ]
+
+    logger.debug(f"Guilds in database: {db_guild_ids}")
+
+    conn.close()
+
+    bot_guild_ids = [ str(guild.id) for guild in bot.guilds ]
+
+    logger.debug(f"Guilds the bot has joined: {bot_guild_ids}")
+
+    for guild_id in bot_guild_ids:
+        if guild_id not in db_guild_ids:
+            logger.info(f"Adding guild {guild_id}")
+            sqlite3_handler.insert_guild(logger, str(guild_id))
+
 def create_database(logger: logging.Logger):
     conn = sqlite3.connect("/data/data.sqlite3")
     cur = conn.cursor()

@@ -169,9 +169,10 @@ async def update_ids():
 @update_ids.before_loop
 async def update_ids_before_loop():
     await bot.wait_until_ready()
+    helpers.check_guilds(logger, bot)   # Putting this here because the bot needs to be connected and ready for the check to work
 
 if __name__ == "__main__":
-    dictConfig(LogConfig().dict())
+    dictConfig(LogConfig().model_dump())
     logger = logging.getLogger(getenv("LOG_NAME", "courier-tracking-bot"))
 
     helpers.check_database(logger)
