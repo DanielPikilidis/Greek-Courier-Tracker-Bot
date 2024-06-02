@@ -8,7 +8,17 @@ import models, sqlite3_handler
 
 TRACKER_URL = getenv("TRACKER_URL", "https://courier-api.danielpikilidis.com")
 
-async def send_status(package: models.TrackingResult, ctx: discord.ApplicationContext = None, bot: discord.Bot = None, channel_id: str = ""):
+courier_urls = {
+    "acs": "https://www.acscourier.net/el/web/greece/track-and-trace?action=getTracking3&generalCode=",
+    "couriercenter": "https://courier.gr/track/result?tracknr=",
+    "easymail": "https://trackntrace.easymail.gr/",
+    "skroutz": "https://www.skroutzlastmile.gr/#",
+    "elta": "https://itemsearch.elta.gr/Query/Direct/",
+    "speedex": "http://www.speedex.gr/isapohi.asp?voucher_code=",
+    "geniki": "https://www.taxydromiki.com/en/track/",
+}
+
+async def send_status(logger: logging.Logger, package: models.TrackingResult, courier_name: str, guild_id: str = "", ctx: discord.ApplicationContext = None, bot: discord.Bot = None, channel_id: str = ""):
     if package is None:
         await ctx.respond("Failed to retrieve package info, please try again.")
         return
@@ -17,8 +27,16 @@ async def send_status(package: models.TrackingResult, ctx: discord.ApplicationCo
         await ctx.respond(f"Package ({package.id}) not found")
         return
     
+    if guild_id != "":
+        description = sqlite3_handler.get_description_for_tracking_id(logger, guild_id, package.id)
+        if description is None:
+            description = package.id
+    else:
+        description = package.id
+
     embed = discord.Embed(
-        title=package.id,
+        title=description,
+        url=courier_urls[courier_name] + package.id,
         color=0xFFFFFF
     )
 
@@ -37,13 +55,15 @@ async def send_status(package: models.TrackingResult, ctx: discord.ApplicationCo
         await ctx.respond(embed=embed)
 
 
-async def retrieve_package_info(courier: str, id: str) -> models.TrackingResult:
+async def retrieve_package_info(logger: logging.Logger, courier: str, id: str) -> models.TrackingResult:
     try:
+        logger.debug(f"Requesting data from {TRACKER_URL}/track-one/{courier}/{id}")
         res = requests.get(f"{TRACKER_URL}/track-one/{courier}/{id}", timeout=2.5)
     except requests.exceptions.Timeout:
         return None
     
     if res.status_code >= 500:
+        logger.debug(f"Request failed with status code {res.status_code}")
         return None
 
     data = res.json()["data"]
@@ -56,7 +76,7 @@ async def retrieve_package_info(courier: str, id: str) -> models.TrackingResult:
         last_location = models.Location(
             location="Unknown",
             description="Unknown",
-            datetime=datetime.datetime.now().isoformat()
+            datetime=datetime.datetime.fromtimestamp(0).isoformat()
         )
     else:
         last_location = models.Location(
@@ -73,8 +93,8 @@ async def retrieve_package_info(courier: str, id: str) -> models.TrackingResult:
         last_location=last_location
     )
 
-async def store_package(logger, ctx: discord.ApplicationContext, courier: str, id: str, description: str):
-    res = await retrieve_package_info(courier, id)
+async def store_package(logger: logging.Logger, ctx: discord.ApplicationContext, courier: str, id: str, description: str):
+    res = await retrieve_package_info(logger, courier, id)
 
     if not res.found:
         await ctx.respond(f"Package ({id}) not found.")
@@ -92,23 +112,24 @@ async def store_package(logger, ctx: discord.ApplicationContext, courier: str, i
     )
 
     sqlite3_handler.insert_package(logger, str(ctx.guild.id), p)
-    await ctx.respond(f"Added package ({id})")
+    await ctx.respond(f"Added package {id} ({description})")
 
-async def remove_package(logger, ctx: discord.ApplicationContext, id: str):
+async def remove_package(logger: logging.Logger, ctx: discord.ApplicationContext, id: str):
     sqlite3_handler.delete_package(logger, str(ctx.guild.id), id)
     await ctx.respond(f"Removed package ({id})")
 
-async def edit_package(logger, ctx: discord.ApplicationContext, id: str, description: str):
+async def edit_package(logger: logging.Logger, ctx: discord.ApplicationContext, id: str, description: str):
     sqlite3_handler.update_package_description(logger, str(ctx.guild.id), id, description)
     await ctx.respond(f"Edited package ({id})")
 
-async def list_packages(logger, ctx: discord.ApplicationContext):
+async def list_packages(logger: logging.Logger, ctx: discord.ApplicationContext):
     packages = []
 
     tracking_ids = sqlite3_handler.get_tracking_ids_for_guild_id(logger, ctx.guild.id)
     if len(tracking_ids) == 0:
-        await ctx.send("No packages found.")
+        await ctx.respond("No packages found.")
         return
+    
 
     for tracking_id in tracking_ids:
         courier_name = sqlite3_handler.get_courier_name_for_tracking_id(logger, tracking_id)
@@ -116,8 +137,10 @@ async def list_packages(logger, ctx: discord.ApplicationContext):
 
         last_location = models.Location(**json.loads(l))
 
+        description = sqlite3_handler.get_description_for_tracking_id(logger, str(ctx.guild.id), tracking_id)
+
         embed = discord.Embed(
-            title=tracking_id,
+            title=description,
         )
 
         embed.add_field(name="Courier", value=courier_name, inline=True)

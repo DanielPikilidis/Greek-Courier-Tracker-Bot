@@ -12,7 +12,7 @@ def get_distinct_tracking_ids_for_courier_name(logger: logging.Logger, courier_n
         WHERE courier_name = ?
     """
 
-    logger.debug(f"In get_distinct_tracking_ids_for_courier_name executing query: {query}")
+    logger.debug(f"In get_distinct_tracking_ids_for_courier_name executing query: {query.replace('?', '%s') % (courier_name,)}")
     cur.execute(query, (courier_name,))
     tracking_ids = [row[0] for row in cur.fetchall()]
 
@@ -45,7 +45,7 @@ def get_tracking_ids_for_guild_id(logger: logging.Logger, guild_id: str):
         WHERE guild_id = ?
     """
 
-    logger.debug(f"In get_tracking_ids_for_guild_id executing query: {query}")
+    logger.debug(f"In get_tracking_ids_for_guild_id executing query: {query.replace('?', '%s') % (guild_id,)}")
     cur.execute(query, (guild_id,))
     tracking_ids = [row[0] for row in cur.fetchall()]
 
@@ -62,7 +62,7 @@ def get_guild_ids_for_tracking_id(logger: logging.Logger, tracking_id: str):
         WHERE tracking_id = ?
     """
 
-    logger.debug(f"In get_guild_ids_for_tracking_id executing query: {query}")
+    logger.debug(f"In get_guild_ids_for_tracking_id executing query: {query.replace('?', '%s') % (tracking_id,)}")
     cur.execute(query, (tracking_id,))
     guild_ids = [row[0] for row in cur.fetchall()]
 
@@ -79,7 +79,7 @@ def get_update_channels_for_guild_ids(logger: logging.Logger, guild_ids: List[st
         WHERE guild_id IN ({});
     """.format(', '.join(['?'] * len(guild_ids)))
 
-    logger.debug(f"In get_update_channels_for_guild_ids executing query: {query}")
+    logger.debug(f"In get_update_channels_for_guild_ids executing query: {query.replace('?', '%s') % tuple(guild_ids)}")
     cur.execute(query, guild_ids)
     update_channels = cur.fetchall()
 
@@ -96,7 +96,7 @@ def get_courier_name_for_tracking_id(logger: logging.Logger, tracking_id: str) -
         WHERE tracking_id = ?
     """
 
-    logger.debug(f"In get_courier_name_for_tracking_id executing query: {query}")
+    logger.debug(f"In get_courier_name_for_tracking_id executing query: {query.replace('?', '%s') % (tracking_id,)}")
     cur.execute(query, (tracking_id,))
     courier_name = cur.fetchone()[0]
 
@@ -113,7 +113,7 @@ def get_last_location_for_tracking_id(logger: logging.Logger, tracking_id: str):
         WHERE tracking_id = ?
     """
 
-    logger.debug(f"In get_last_location_for_tracking_id executing query: {query}")
+    logger.debug(f"In get_last_location_for_tracking_id executing query: {query.replace('?', '%s') % (tracking_id,)}")
     cur.execute(query, (tracking_id,))
     last_location = cur.fetchone()[0]
 
@@ -121,16 +121,35 @@ def get_last_location_for_tracking_id(logger: logging.Logger, tracking_id: str):
 
     return last_location
 
+def get_description_for_tracking_id(logger: logging.Logger, guild_id: str, tracking_id: str):
+    conn = sqlite3.connect("/data/data.sqlite3")
+    cur = conn.cursor()
+
+    query = """
+        SELECT description FROM Packages
+        WHERE tracking_id = ? AND guild_id = ?
+    """
+
+    logger.debug(f"In get_description_for_tracking_id executing query: {query.replace('?', '%s') % (tracking_id, guild_id)}")
+    cur.execute(query, (tracking_id, guild_id))
+    description = cur.fetchone()
+    if description is not None:
+        description = description[0]
+
+    conn.close()
+
+    return description
+
 def insert_guild(logger: logging.Logger, guild_id: str):
     conn = sqlite3.connect("/data/data.sqlite3")
     cur = conn.cursor()
 
     query = """
         INSERT INTO Guilds (guild_id, updates_channel)
-        VALUES (?, NULL)
+        VALUES (?, 0)
     """
 
-    logger.debug(f"In insert_guild executing query: {query}")
+    logger.debug(f"In insert_guild executing query: {query.replace('?', '%s') % (guild_id,)}")
     cur.execute(query, (guild_id,))
     conn.commit()
     conn.close()
@@ -144,7 +163,7 @@ def insert_package(logger: logging.Logger, guild_id: str, package: models.Packag
         VALUES (?, ?, ?, ?, ?)
     """
 
-    logger.debug(f"In insert_package executing query: {query}")
+    logger.debug(f"In insert_package executing query: {query.replace('?', '%s') % (guild_id, package.tracking_id, package.courier_name, package.last_location, package.description)}")
     cur.execute(query, (guild_id, package.tracking_id, package.courier_name, package.last_location, package.description))
     conn.commit()
     conn.close()
@@ -158,7 +177,7 @@ def delete_guild(logger: logging.Logger, guild_id: str):
         WHERE guild_id = ?
     """
 
-    logger.debug(f"In delete_guild executing query: {query}")
+    logger.debug(f"In delete_guild executing query: {query.replace('?', '%s') % (guild_id,)}")
     cur.execute(query, (guild_id,))
     conn.commit()
 
@@ -167,7 +186,7 @@ def delete_guild(logger: logging.Logger, guild_id: str):
         WHERE guild_id = ?
     """
 
-    logger.debug(f"In delete_guild executing query: {query}")
+    logger.debug(f"In delete_guild executing query: {query.replace('?', '%s') % (guild_id,)}")
     cur.execute(query, (guild_id,))
     conn.commit()
 
@@ -182,7 +201,7 @@ def delete_package(logger: logging.Logger, guild_id: str, tracking_id: str):
         WHERE tracking_id = ? AND guild_id = ?
     """
 
-    logger.debug(f"In delete_package executing query: {query}")
+    logger.debug(f"In delete_package executing query: {query.replace('?', '%s') % (tracking_id, guild_id)}")
     cur.execute(query, (tracking_id, guild_id))
     conn.commit()
     conn.close()
@@ -197,7 +216,7 @@ def update_channel(logger: logging.Logger, guild_id: str, update_channel: str):
         WHERE guild_id = ?
     """
 
-    logger.debug(f"In update_channel executing query: {query}")
+    logger.debug(f"In update_channel executing query: {query.replace('?', '%s') % (update_channel, guild_id)}")
     cur.execute(query, (update_channel, guild_id))
     conn.commit()
     conn.close()
@@ -212,7 +231,7 @@ def update_package_last_location(logger: logging.Logger, tracking_id: str, locat
         WHERE tracking_id = ?
     """
 
-    logger.debug(f"In update_package_last_location executing query: {query}")
+    logger.debug(f"In update_package_last_location executing query: {query.replace('?', '%s') % (location, tracking_id)}")
     cur.execute(query, (location, tracking_id))
     conn.commit()
     conn.close()
@@ -227,7 +246,7 @@ def update_package_description(logger: logging.Logger, guild_id: str, tracking_i
         WHERE tracking_id = ? AND guild_id = ?
     """
 
-    logger.debug(f"In update_package_description executing query: {query}")
+    logger.debug(f"In update_package_description executing query: {query.replace('?', '%s') % (description, tracking_id, guild_id)}")
     cur.execute(query, (description, tracking_id, guild_id))
     conn.commit()
     conn.close()

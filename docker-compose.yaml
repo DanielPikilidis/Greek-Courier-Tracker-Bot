@@ -1,9 +1,7 @@
-version: "3.8"
 services:
-  courier_tracking:
+  bot:
     image: dpikilidis/courier-tracking-bot:latest
     container_name: courier-tracking-bot
-    restart: always
     volumes:
       - ./logs:/logs
       - ./data:/data
@@ -12,3 +10,4 @@ services:
       - LOG_LEVEL=INFO
       - TRACKER_URL=https://courier-api.danielpikilidis.com
       - DISCORD_KEY= # KEY HERE
+    restart: unless-stopped
